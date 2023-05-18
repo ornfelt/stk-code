@@ -373,7 +373,9 @@ void Kart::reset()
     m_invulnerable_ticks   = 0;
     m_min_nitro_ticks      = 0;
     m_energy_to_min_ratio  = 0;
-    m_collected_energy     = 0;
+    // HEHE
+    //m_collected_energy     = 0;
+    m_collected_energy     = 1000.0F;
     m_bounce_back_ticks    = 0;
     m_brake_ticks          = 0;
     m_ticks_last_crash     = 0;
@@ -1169,8 +1171,10 @@ void Kart::collectedItem(ItemState *item_state)
     default        : break;
     }   // switch TYPE
 
-    if ( m_collected_energy > m_kart_properties->getNitroMax())
-        m_collected_energy = m_kart_properties->getNitroMax();
+    if (m_collected_energy > m_kart_properties->getNitroMax())
+        // HEHE
+        //m_collected_energy = m_kart_properties->getNitroMax();
+        m_collected_energy = 1000.0F;
     m_controller->collectedItem(*item_state, old_energy);
 
 }   // collectedItem
@@ -2260,7 +2264,8 @@ void Kart::updateNitro(int ticks)
     }
 
 
-    m_collected_energy -= m_consumption_per_tick*ticks;
+    // HEHE
+    // m_collected_energy -= m_consumption_per_tick*ticks;
     if (m_collected_energy < 0)
     {
         if(m_nitro_sound->getStatus() == SFXBase::SFX_PLAYING && !rewinding)
