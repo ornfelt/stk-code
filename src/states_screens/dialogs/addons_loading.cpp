@@ -111,12 +111,12 @@ void AddonsLoading::beforeAddingWidgets()
 
     if (m_addon.isInstalled())
     {
-        /* Turn "Install" button into "Update" if allowed to access the internet
-         * and not in an errored state
+        /* only keep the button as "update" if allowed to access the net
+         * and  not in error state
          */
         if (m_addon.needsUpdate() && !addons_manager->wasError()
             && UserConfigParams::m_internet_status==RequestManager::IPERM_ALLOWED)
-            getWidget<IconButtonWidget> ("install")->setText( _("Update") );
+            getWidget<IconButtonWidget> ("install")->setLabel( _("Update") );
         else
             r->removeChildNamed("install");
     }

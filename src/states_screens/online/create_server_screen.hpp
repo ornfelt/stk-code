@@ -51,7 +51,6 @@ private:
     GUIEngine::RibbonWidget * m_options_widget;
     GUIEngine::IconButtonWidget * m_create_widget;
     GUIEngine::IconButtonWidget * m_cancel_widget;
-    GUIEngine::IconButtonWidget * m_back_widget;
 
     void createServer();
     void updateMoreOption(int game_mode);

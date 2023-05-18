@@ -261,31 +261,28 @@ void RaceResultGUI::enableAllButtons()
     // If we're in a network world, change the buttons text
     if (World::getWorld()->isNetworkWorld())
     {
-        right->setLabel(_("Continue"));
-        right->setImage("gui/icons/green_check.png");
-        right->setVisible(true);
-        operations->select("right", PLAYER_ID_GAME_MASTER);
-        middle->setVisible(false);
-        left->setLabel(_("Quit the server"));
-        left->setImage("gui/icons/main_quit.png");
+        left->setLabel(_("Continue"));
+        left->setImage("gui/icons/green_check.png");
         left->setVisible(true);
+        operations->select("left", PLAYER_ID_GAME_MASTER);
+        middle->setVisible(false);
+        right->setLabel(_("Quit the server"));
+        right->setImage("gui/icons/main_quit.png");
+        right->setVisible(true);
         return;
     }
 
     // If something was unlocked
     // -------------------------
-
-    // Note: Only returns greater than 0 for regular races, despite GPs
-    // showing feature unlocked cutscene.  GPs have their own logic.
     int n = (int)PlayerManager::getCurrentPlayer()
         ->getRecentlyCompletedChallenges().size();
-
     if (n > 0 &&
          (RaceManager::get()->getMajorMode() != RaceManager::MAJOR_MODE_GRAND_PRIX ||
           RaceManager::get()->getTrackNumber() + 1 == RaceManager::get()->getNumOfTracks() ) )
     {
-        middle->setLabel(_("Continue"));
-        middle->setImage("gui/icons/green_check.png");
+        middle->setLabel(n == 1 ? _("You completed a challenge!")
+            : _("You completed challenges!"));
+        middle->setImage("gui/icons/cup_gold.png");
         middle->setVisible(true);
         operations->select("middle", PLAYER_ID_GAME_MASTER);
     }
@@ -297,26 +294,26 @@ void RaceResultGUI::enableAllButtons()
         middle->setImage("gui/icons/green_check.png");
         middle->setVisible(false);
         middle->setFocusable(false);
-        left->setVisible(false);
-        left->setFocusable(false);
+        right->setVisible(false);
+        right->setFocusable(false);
 
         // Two continue buttons to make sure the buttons in the bar is balanced
-        right->setLabel(_("Continue"));
-        right->setImage("gui/icons/green_check.png");
-        right->setVisible(true);
+        left->setLabel(_("Continue"));
+        left->setImage("gui/icons/green_check.png");
+        left->setVisible(true);
 
         if (RaceManager::get()->getTrackNumber() + 1 < RaceManager::get()->getNumOfTracks())
         {
-            left->setLabel(_("Abort Grand Prix"));
-            left->setImage("gui/icons/race_giveup.png");
-            left->setVisible(true);
-            left->setFocusable(true);
-            operations->select("right", PLAYER_ID_GAME_MASTER);
+            right->setLabel(_("Abort Grand Prix"));
+            right->setImage("gui/icons/race_giveup.png");
+            right->setVisible(true);
+            right->setFocusable(true);
+            operations->select("left", PLAYER_ID_GAME_MASTER);
         }
         else
         {
-            right->setVisible(false);
-            right->setFocusable(false);
+            left->setVisible(false);
+            left->setFocusable(false);
             middle->setVisible(true);
             operations->select("middle", PLAYER_ID_GAME_MASTER);
         }
@@ -327,15 +324,15 @@ void RaceResultGUI::enableAllButtons()
         // Normal race
         // -----------
 
-        right->setLabel(_("Restart"));
-        right->setImage("gui/icons/restart.png");
-        right->setVisible(true);
-        operations->select("right", PLAYER_ID_GAME_MASTER);
+        left->setLabel(_("Restart"));
+        left->setImage("gui/icons/restart.png");
+        left->setVisible(true);
+        operations->select("left", PLAYER_ID_GAME_MASTER);
         if (RaceManager::get()->raceWasStartedFromOverworld())
         {
             middle->setVisible(false);
-            left->setLabel(_("Back to challenge selection"));
-            left->setImage("gui/icons/back.png");
+            right->setLabel(_("Back to challenge selection"));
+            right->setImage("gui/icons/back.png");
         }
         else
         {
@@ -350,10 +347,10 @@ void RaceResultGUI::enableAllButtons()
                 middle->setLabel(_("Setup New Race"));
                 middle->setVisible(true);
             }
-            left->setLabel(_("Back to the menu"));
-            left->setImage("gui/icons/back.png");
+            right->setLabel(_("Back to the menu"));
+            right->setImage("gui/icons/back.png");
         }
-        left->setVisible(true);
+        right->setVisible(true);
     }
 }   // enableAllButtons
 
@@ -384,12 +381,10 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
     {
         const std::string& action =
             getWidget<GUIEngine::RibbonWidget>("operations")->getSelectionIDString(PLAYER_ID_GAME_MASTER);
-
-        // User pressed "Continue" button, go from race results to overall GP results
-        if (m_animation_state == RR_WAITING_GP_RESULT && action == "middle")
+        if (m_animation_state == RR_WAITING_GP_RESULT && action == "left")
         {
-            GUIEngine::IconButtonWidget *middle = getWidget<GUIEngine::IconButtonWidget>("middle");
-            middle->setVisible(false);
+            GUIEngine::IconButtonWidget *left = getWidget<GUIEngine::IconButtonWidget>("left");
+            left->setVisible(false);
             getWidget("operations")->setActive(false);
             m_all_row_infos = m_all_row_info_waiting;
             m_animation_state = RR_OLD_GP_RESULTS;
@@ -400,15 +395,15 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
         // If we're playing online :
         if (World::getWorld()->isNetworkWorld())
         {
-            if (action == "right") // Continue button (return to server lobby)
+            if (action == "left") // Continue button (return to server lobby)
             {
                 // Signal to the server that this client is back in the lobby now.
                 auto cl = LobbyProtocol::get<ClientLobby>();
                 if (cl)
                     cl->doneWithResults();
-                getWidget<GUIEngine::IconButtonWidget>("right")->setLabel(_("Waiting for others"));
+                getWidget<GUIEngine::IconButtonWidget>("left")->setLabel(_("Waiting for others"));
             }
-            if (action == "left") // Quit server (return to online lan / wan menu)
+            if (action == "right") // Quit server (return to online lan / wan menu)
             {
                 RaceManager::get()->clearNetworkGrandPrixResult();
                 if (STKHost::existHost())
@@ -424,18 +419,17 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
             return;
         }
 
-        // If something was unlocked, the 'continue' button is
-        // used to trigger the unlocked feature(s) cutscene.
+        // If something was unlocked, the 'continue' button was
+        // actually used to display "Show unlocked feature(s)" text.
         // ---------------------------------------------------------
         PlayerProfile *player = PlayerManager::getCurrentPlayer();
 
-        // Note: Only returns greater than 0 for regular races, despite GPs
-        // showing feature unlocked cutscene.  GPs have their own logic.
         int n = (int)player->getRecentlyCompletedChallenges().size();
 
         if (n > 0 &&
              (RaceManager::get()->getMajorMode() != RaceManager::MAJOR_MODE_GRAND_PRIX ||
               RaceManager::get()->getTrackNumber() + 1 == RaceManager::get()->getNumOfTracks() ) )
+
         {
             if (action == "middle")
             {
@@ -525,13 +519,13 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
         // -----------------
         if (RaceManager::get()->getMajorMode() == RaceManager::MAJOR_MODE_GRAND_PRIX)
         {
-            if (action == "right" || action == "middle")        // Next GP
+            if (action == "left" || action == "middle")        // Next GP
             {
                 cleanupGPProgress();
                 StateManager::get()->popMenu();
                 RaceManager::get()->next();
             }
-            else if (action == "left")        // Abort
+            else if (action == "right")        // Abort
             {
                 new MessageDialog(_("Do you really want to abort the Grand Prix?"),
                     MessageDialog::MESSAGE_DIALOG_CONFIRM, this,
@@ -547,7 +541,7 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
         }
 
         StateManager::get()->popMenu();
-        if (action == "right")        // Restart
+        if (action == "left")        // Restart
         {
             RaceManager::get()->rerunRace();
         }
@@ -594,7 +588,7 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
                 StateManager::get()->resetAndSetStack(newStack);
             }
         }
-        else if (action == "left")        // Back to main
+        else if (action == "right")        // Back to main
         {
             RaceManager::get()->exitRace();
             RaceManager::get()->setAIKartOverride("");
@@ -1135,14 +1129,14 @@ void RaceResultGUI::unload()
                 determineGPLayout();
                 m_all_row_info_waiting = m_all_row_infos;
                 m_all_row_infos = prev_infos;
-                GUIEngine::IconButtonWidget *middle = getWidget<GUIEngine::IconButtonWidget>("middle");
+                GUIEngine::IconButtonWidget *left = getWidget<GUIEngine::IconButtonWidget>("left");
                 GUIEngine::RibbonWidget *operations = getWidget<GUIEngine::RibbonWidget>("operations");
                 operations->setActive(true);
                 operations->setFocusForPlayer(PLAYER_ID_GAME_MASTER);
-                middle->setLabel(_("Continue"));
-                middle->setImage("gui/icons/green_check.png");
-                middle->setVisible(true);
-                operations->select("middle", PLAYER_ID_GAME_MASTER);
+                left->setLabel(_("Continue"));
+                left->setImage("gui/icons/green_check.png");
+                left->setVisible(true);
+                operations->select("left", PLAYER_ID_GAME_MASTER);
             }
             break;
         case RR_WAITING_GP_RESULT:
