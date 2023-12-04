@@ -1,3 +1,64 @@
+# Notes
+
+I used 25 nitro speed in android debug. 50 for release...
+
+DO THIS:
+
+Download release from: https://github.com/supertuxkart/stk-assets-mobile
+
+Run generate_assets script in /home/jonas/Code2/C++/stk-code/android
+
+Seems like shaderc was missing from android-deps...
+
+In /home/jonas/Code2/C++/stk-code/lib/
+
+Do:
+
+git clone https://github.com/google/shaderc
+
+git checkout e3846cda59a85acb0c47a6cb9e6b4adbb111e54b
+
+git reset --hard
+
+In /home/jonas/Code2/C++/stk-code/lib/shaderc/utils:
+
+./git-sync-deps
+
+Then, in /home/jonas/Code2/C++/stk-code/android:
+
+# export ANDROID_HOME=/home/jonas/Android/Sdk
+
+export NDK_PATH=/home/jonas/Android/Sdk/ndk
+
+export SDK_PATH=/home/jonas/Android/Sdk
+
+export STK_NDK_VERSION=23.1.7779620
+
+export BUILD_TOOLS_VER=30.0.3
+
+export COMPILE_ARCH=aarch64 (or other specific architecture)
+
+./make_deps.sh -j$(nproc)
+
+For make.sh you need java 11 (see gradlew execution at the bottom of make.sh)
+
+You can also do:
+
+export BUILD_TYPE=debug
+
+or: export BUILD_TYPE=release (see readme in android dir for more release info)
+
+See more info in https://github.com/supertuxkart/stk-code/android
+
+/home/jonas/Code2/C++/stk-code/android/README.ANDROID
+
+Then: ./make.sh -j4
+
+for all cores and output printed to file:
+
+./make.sh -j$(nproc) > test.txt 2>&1
+
+
 ================================================================================
 
  SUPERTUXKART

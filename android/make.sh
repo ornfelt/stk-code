@@ -4,7 +4,6 @@
 #
 # A script that creates the apk build
 
-
 export DIRNAME=$(realpath "$(dirname "$0")")
 
 export NDK_PATH_DEFAULT="$DIRNAME/android-ndk"
@@ -403,6 +402,7 @@ cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDL
        "$DIRNAME/src/main/java/"
 cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDL.java" \
        "$DIRNAME/src/main/java/"
+# This will most likely fail (SDLSurface doesn't exist)
 cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLSurface.java" \
        "$DIRNAME/src/main/java/"
 
@@ -432,8 +432,25 @@ convert -scale 216x216 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-xhdpi/icon
 convert -scale 324x324 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-xxhdpi/icon_fg.png"
 convert -scale 432x432 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-xxxhdpi/icon_fg.png"
 
+echo "COMPILE_SDK_VERSION=$COMPILE_SDK_VERSION"
+echo "STK_MIN_ANDROID_SDK=$STK_MIN_ANDROID_SDK"
+echo "STK_TARGET_ANDROID_SDK=$STK_TARGET_ANDROID_SDK"
+echo "STK_STOREPASS=$STK_STOREPASS"
+echo "STK_KEYSTORE=$STK_KEYSTORE"
+echo "STK_ALIAS=$STK_ALIAS"
+echo "STK_NDK_VERSION=$STK_NDK_VERSION"
+echo "COMPILE_ARCH=$COMPILE_ARCH"
+echo "CPU_CORE=$CPU_CORE"
+echo "PACKAGE_NAME=$PACKAGE_NAME"
+echo "PROJECT_VERSION=$PROJECT_VERSION"
+echo "PROJECT_CODE=$PROJECT_CODE"
+echo "GRADLE_BUILD_TYPE=$GRADLE_BUILD_TYPE"
+
 export ANDROID_HOME="$SDK_PATH"
-./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+
+#./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+#./gradlew clean -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+./gradlew -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
           -Pmin_sdk_version="$STK_MIN_ANDROID_SDK"       \
           -Ptarget_sdk_version="$STK_TARGET_ANDROID_SDK" \
           -Pstorepass="$STK_STOREPASS"                   \
@@ -448,7 +465,9 @@ export ANDROID_HOME="$SDK_PATH"
           $GRADLE_BUILD_TYPE
 
 if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
-./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+#./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+#./gradlew clean -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+./gradlew -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
           -Pmin_sdk_version="$STK_MIN_ANDROID_SDK"       \
           -Ptarget_sdk_version="$STK_TARGET_ANDROID_SDK" \
           -Pstorepass="$STK_STOREPASS"                   \

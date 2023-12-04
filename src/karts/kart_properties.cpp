@@ -1182,8 +1182,8 @@ float KartProperties::getNitroMaxSpeedIncrease() const
 {
     // HEHE
     //return m_cached_characteristic->getNitroMaxSpeedIncrease();
-    return m_cached_characteristic->getNitroMaxSpeedIncrease() + 25.0F;
-    //return m_cached_characteristic->getNitroMaxSpeedIncrease() + 50.0F;
+    //return m_cached_characteristic->getNitroMaxSpeedIncrease() + 25.0F;
+    return m_cached_characteristic->getNitroMaxSpeedIncrease() + 50.0F;
 }  // getNitroMaxSpeedIncrease
 
 // ----------------------------------------------------------------------------
