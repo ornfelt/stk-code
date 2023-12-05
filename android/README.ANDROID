@@ -58,6 +58,35 @@ for all cores and output printed to file:
 
 ./make.sh -j$(nproc) > test.txt 2>&1
 
+What I used for release:
+
+export NDK_PATH=/home/jonas/Android/Sdk/ndk
+
+export SDK_PATH=/home/jonas/Android/Sdk
+
+export STK_NDK_VERSION=23.1.7779620
+
+export BUILD_TOOLS_VER=30.0.3
+
+export COMPILE_ARCH=aarch64
+
+export PROJECT_CODE=1
+
+export BUILD_TYPE=release
+
+Skip signing by removing it from build.gradle and make.sh... (can be activated again)
+
+if signing release: keytool -genkey -v -keystore my-release-key.keystore -alias alias_name -keyalg RSA -keysize 2048 -validity 10000 
+
+if signing release: export STK_STOREPASS="supertuxkart"
+
+if signing release: export STK_KEYSTORE="./my-release-key.keystore"
+
+if signing release: export STK_ALIAS="alias_name"
+
+and setup build.gradle, make.sh and maybe some other missing step...
+
+./make.sh -j$(nproc)
 
 ================================================================================
 
@@ -161,7 +190,7 @@ to just run:
     ./make_deps.sh
     ./make.sh
 
-You may need to add org.gradle.jvmargs=-XX:MaxHeapSize=2048m -Xmx2048m to
+You may need to add org.gradle.jvmargs=-xx:maxheapsize=2048m -xmx2048m to
 .gradle/gradle.properties if you see java.lang.OutOfMemoryError / Java heap
 space execption error.
 

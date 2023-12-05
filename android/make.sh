@@ -156,31 +156,31 @@ if [ ! -d "$SDK_PATH" ]; then
 fi
 
 # Check if we have key for signing in release build
-if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
-    if [ -z "$STK_KEYSTORE" ]; then
-        echo "Error: STK_KEYSTORE variable is empty."
-        exit
-    fi
-
-    if [ ! -f "$STK_KEYSTORE" ]; then
-        echo "Error: Couldn't find $STK_KEYSTORE file."
-        exit
-    fi
-
-    if [ -z "$STK_STOREPASS" ]; then
-        echo "Error: STK_STOREPASS variable is empty"
-        exit
-    fi
-
-    if [ -z "$STK_ALIAS" ]; then
-        echo "Error: STK_ALIAS variable is empty."
-        exit
-    fi
-else
-    STK_KEYSTORE="empty"
-    STK_STOREPASS="empty"
-    STK_ALIAS="empty"
-fi
+# if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
+#     if [ -z "$STK_KEYSTORE" ]; then
+#         echo "Error: STK_KEYSTORE variable is empty."
+#         exit
+#     fi
+# 
+#     if [ ! -f "$STK_KEYSTORE" ]; then
+#         echo "Error: Couldn't find $STK_KEYSTORE file."
+#         exit
+#     fi
+# 
+#     if [ -z "$STK_STOREPASS" ]; then
+#         echo "Error: STK_STOREPASS variable is empty"
+#         exit
+#     fi
+# 
+#     if [ -z "$STK_ALIAS" ]; then
+#         echo "Error: STK_ALIAS variable is empty."
+#         exit
+#     fi
+# else
+#     STK_KEYSTORE="empty"
+#     STK_STOREPASS="empty"
+#     STK_ALIAS="empty"
+# fi
 
 # Find newest build-tools version
 if [ -z "$BUILD_TOOLS_VER" ]; then
@@ -464,22 +464,22 @@ export ANDROID_HOME="$SDK_PATH"
           -Pversion_code="$PROJECT_CODE"                 \
           $GRADLE_BUILD_TYPE
 
-if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
-#./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
-#./gradlew clean -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
-./gradlew -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
-          -Pmin_sdk_version="$STK_MIN_ANDROID_SDK"       \
-          -Ptarget_sdk_version="$STK_TARGET_ANDROID_SDK" \
-          -Pstorepass="$STK_STOREPASS"                   \
-          -Pkeystore="$STK_KEYSTORE"                     \
-          -Palias="$STK_ALIAS"                           \
-          -Pndk_version="$STK_NDK_VERSION"               \
-          -Pcompile_arch="$COMPILE_ARCH"                 \
-          -Pcpu_core="$CPU_CORE"                         \
-          -Ppackage_name="$PACKAGE_NAME"                 \
-          -Pversion_name="$PROJECT_VERSION"              \
-          -Pversion_code="$PROJECT_CODE"                 \
-          "bundleRelease"
-fi
+# if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
+# ./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+# #./gradlew clean -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+# #./gradlew -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
+#           -Pmin_sdk_version="$STK_MIN_ANDROID_SDK"       \
+#           -Ptarget_sdk_version="$STK_TARGET_ANDROID_SDK" \
+#           -Pstorepass="$STK_STOREPASS"                   \
+#           -Pkeystore="$STK_KEYSTORE"                     \
+#           -Palias="$STK_ALIAS"                           \
+#           -Pndk_version="$STK_NDK_VERSION"               \
+#           -Pcompile_arch="$COMPILE_ARCH"                 \
+#           -Pcpu_core="$CPU_CORE"                         \
+#           -Ppackage_name="$PACKAGE_NAME"                 \
+#           -Pversion_name="$PROJECT_VERSION"              \
+#           -Pversion_code="$PROJECT_CODE"                 \
+#           "bundleRelease"
+# fi
 
 check_error
