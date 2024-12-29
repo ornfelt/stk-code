@@ -1,0 +1,2141 @@
+diff --git a/android/.idea/.gitignore b/android/.idea/.gitignore
+new file mode 100644
+index 000000000..26d33521a
+--- /dev/null
++++ b/android/.idea/.gitignore
+@@ -0,0 +1,3 @@
++# Default ignored files
++/shelf/
++/workspace.xml
+diff --git a/android/.idea/gradle.xml b/android/.idea/gradle.xml
+new file mode 100644
+index 000000000..47e88dff4
+--- /dev/null
++++ b/android/.idea/gradle.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="GradleMigrationSettings" migrationVersion="1" />
++  <component name="GradleSettings">
++    <option name="linkedExternalProjectsSettings">
++      <GradleProjectSettings>
++        <option name="testRunner" value="GRADLE" />
++        <option name="distributionType" value="DEFAULT_WRAPPED" />
++        <option name="externalProjectPath" value="$PROJECT_DIR$" />
++        <option name="gradleHome" value="/usr/share/java/gradle" />
++        <option name="gradleJvm" value="temurin-11" />
++      </GradleProjectSettings>
++    </option>
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/android/.idea/misc.xml b/android/.idea/misc.xml
+new file mode 100644
+index 000000000..a318cae6f
+--- /dev/null
++++ b/android/.idea/misc.xml
+@@ -0,0 +1,9 @@
++<project version="4">
++  <component name="ExternalStorageConfigurationManager" enabled="true" />
++  <component name="ProjectRootManager" version="2" project-jdk-name="jbr-17" project-jdk-type="JavaSDK">
++    <output url="file://$PROJECT_DIR$/build/classes" />
++  </component>
++  <component name="ProjectType">
++    <option name="id" value="Android" />
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/android/.idea/vcs.xml b/android/.idea/vcs.xml
+new file mode 100644
+index 000000000..6c0b86358
+--- /dev/null
++++ b/android/.idea/vcs.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="VcsDirectoryMappings">
++    <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
++  </component>
++</project>
+\ No newline at end of file
+diff --git a/android/Android.mk b/android/Android.mk
+index f0bcdd0c1..575687e4e 100644
+--- a/android/Android.mk
++++ b/android/Android.mk
+@@ -109,7 +109,8 @@ include $(CLEAR_VARS)
+ 
+ # astc-encoder
+ LOCAL_MODULE       := libastcenc
+-LOCAL_SRC_FILES    := deps-$(TARGET_ARCH_ABI)/astc-encoder/Source/libastcenc.a
++#LOCAL_SRC_FILES    := deps-$(TARGET_ARCH_ABI)/astc-encoder/Source/libastcenc.a
++LOCAL_SRC_FILES    := deps-$(TARGET_ARCH_ABI)/astc-encoder/Source/libastcenc-native-static.a
+ include $(PREBUILT_STATIC_LIBRARY)
+ include $(CLEAR_VARS)
+ 
+diff --git a/android/README.ANDROID b/android/README.ANDROID
+index 5e4fe416c..c220a6112 100644
+--- a/android/README.ANDROID
++++ b/android/README.ANDROID
+@@ -1,3 +1,93 @@
++# Notes
++
++I used 25 nitro speed in android debug. 50 for release...
++
++DO THIS:
++
++Download release from: https://github.com/supertuxkart/stk-assets-mobile
++
++Run generate_assets script in /home/jonas/Code2/C++/stk-code/android
++
++Seems like shaderc was missing from android-deps...
++
++In /home/jonas/Code2/C++/stk-code/lib/
++
++Do:
++
++git clone https://github.com/google/shaderc
++
++git checkout e3846cda59a85acb0c47a6cb9e6b4adbb111e54b
++
++git reset --hard
++
++In /home/jonas/Code2/C++/stk-code/lib/shaderc/utils:
++
++./git-sync-deps
++
++Then, in /home/jonas/Code2/C++/stk-code/android:
++
++# export ANDROID_HOME=/home/jonas/Android/Sdk
++
++export NDK_PATH=/home/jonas/Android/Sdk/ndk
++
++export SDK_PATH=/home/jonas/Android/Sdk
++
++export STK_NDK_VERSION=23.1.7779620
++
++export BUILD_TOOLS_VER=30.0.3
++
++export COMPILE_ARCH=aarch64 (or other specific architecture)
++
++./make_deps.sh -j$(nproc)
++
++For make.sh you need java 11 (see gradlew execution at the bottom of make.sh)
++
++You can also do:
++
++export BUILD_TYPE=debug
++
++or: export BUILD_TYPE=release (see readme in android dir for more release info)
++
++See more info in https://github.com/supertuxkart/stk-code/android
++
++/home/jonas/Code2/C++/stk-code/android/README.ANDROID
++
++Then: ./make.sh -j4
++
++for all cores and output printed to file:
++
++./make.sh -j$(nproc) > test.txt 2>&1
++
++What I used for release:
++
++export NDK_PATH=/home/jonas/Android/Sdk/ndk
++
++export SDK_PATH=/home/jonas/Android/Sdk
++
++export STK_NDK_VERSION=23.1.7779620
++
++export BUILD_TOOLS_VER=30.0.3
++
++export COMPILE_ARCH=aarch64
++
++export PROJECT_CODE=1
++
++export BUILD_TYPE=release
++
++Skip signing by removing it from build.gradle and make.sh... (can be activated again)
++
++if signing release: keytool -genkey -v -keystore my-release-key.keystore -alias alias_name -keyalg RSA -keysize 2048 -validity 10000 
++
++if signing release: export STK_STOREPASS="supertuxkart"
++
++if signing release: export STK_KEYSTORE="./my-release-key.keystore"
++
++if signing release: export STK_ALIAS="alias_name"
++
++and setup build.gradle, make.sh and maybe some other missing step...
++
++./make.sh -j$(nproc)
++
+ ================================================================================
+ 
+  SUPERTUXKART
+@@ -100,7 +190,7 @@ to just run:
+     ./make_deps.sh
+     ./make.sh
+ 
+-You may need to add org.gradle.jvmargs=-XX:MaxHeapSize=2048m -Xmx2048m to
++You may need to add org.gradle.jvmargs=-xx:maxheapsize=2048m -xmx2048m to
+ .gradle/gradle.properties if you see java.lang.OutOfMemoryError / Java heap
+ space execption error.
+ 
+diff --git a/android/build.gradle b/android/build.gradle
+index 8241548db..4855749ff 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -74,16 +74,16 @@ android
+         }
+     }
+ 
+-    signingConfigs
+-    {
+-        release
+-        {
+-            storeFile file(keystore)
+-            storePassword storepass
+-            keyAlias alias
+-            keyPassword storepass
+-        }
+-    }
++    //signingConfigs
++    //{
++    //    release
++    //    {
++    //        storeFile file(keystore)
++    //        storePassword storepass
++    //        keyAlias alias
++    //        keyPassword storepass
++    //    }
++    //}
+ 
+     buildTypes
+     {
+@@ -126,18 +126,19 @@ android
+                     cppFlags '-O3'
+                 }
+             }
+-            signingConfig signingConfigs.release
+-            ndk
+-            {
+-                if (project.getProperty('compile_arch') == 'all')
+-                {
+-                    abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+-                }
+-                else
+-                {
+-                    abiFilters project.getProperty('compile_arch')
+-                }
+-            }
++            signingConfig signingConfigs.debug
++            //signingConfig signingConfigs.release
++            //ndk
++            //{
++            //    if (project.getProperty('compile_arch') == 'all')
++            //    {
++            //        abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
++            //    }
++            //    else
++            //    {
++            //        abiFilters project.getProperty('compile_arch')
++            //    }
++            //}
+         }
+     }
+ 
+diff --git a/android/local.properties b/android/local.properties
+new file mode 100644
+index 000000000..6e0113d80
+--- /dev/null
++++ b/android/local.properties
+@@ -0,0 +1,8 @@
++## This file must *NOT* be checked into Version Control Systems,
++# as it contains information specific to your local configuration.
++#
++# Location of the SDK. This is only used by Gradle.
++# For customization when using a Version Control System, please read the
++# header note.
++#Sun Dec 03 21:09:30 CET 2023
++sdk.dir=/home/jonas/Android/Sdk
+diff --git a/android/make_my.sh b/android/make_my.sh
+new file mode 100644
+index 000000000..5043ce3f5
+--- /dev/null
++++ b/android/make_my.sh
+@@ -0,0 +1,485 @@
++#!/bin/bash
++#
++# (C) 2016-2017 Dawid Gan, under the GPLv3
++#
++# A script that creates the apk build
++
++export DIRNAME=$(realpath "$(dirname "$0")")
++
++export NDK_PATH_DEFAULT="$DIRNAME/android-ndk"
++export SDK_PATH_DEFAULT="$DIRNAME/android-sdk"
++
++export NDK_BUILD_SCRIPT="$DIRNAME/Android.mk"
++
++#export NDK_CCACHE=ccache
++export CPU_CORE="-j$(($(nproc) + 1))"
++
++if [ -z "$STK_MIN_ANDROID_SDK" ]; then
++    export STK_MIN_ANDROID_SDK=16
++fi
++
++if [ -z "$STK_TARGET_ANDROID_SDK" ]; then
++    export STK_TARGET_ANDROID_SDK=34
++fi
++
++if [ -z "$STK_NDK_VERSION" ]; then
++    export STK_NDK_VERSION=23.1.7779620
++fi
++
++export APP_NAME_RELEASE="SuperTuxKart"
++export PACKAGE_NAME_RELEASE="org.supertuxkart.stk"
++export PACKAGE_CLASS_NAME_RELEASE="org/supertuxkart/stk"
++export APP_DIR_NAME_RELEASE="supertuxkart"
++export APP_ICON_RELEASE="$DIRNAME/icon.png"
++export APP_ICON_ADAPTIVE_BG_RELEASE="$DIRNAME/icon_adaptive_bg.png"
++export APP_ICON_ADAPTIVE_FG_RELEASE="$DIRNAME/icon_adaptive_fg.png"
++
++export APP_NAME_BETA="SuperTuxKart Beta"
++export PACKAGE_NAME_BETA="org.supertuxkart.stk_beta"
++export PACKAGE_CLASS_NAME_BETA="org/supertuxkart/stk_beta"
++export APP_DIR_NAME_BETA="supertuxkart-beta"
++export APP_ICON_BETA="$DIRNAME/icon-dbg.png"
++export APP_ICON_ADAPTIVE_BG_BETA="$DIRNAME/icon_adaptive_bg-dbg.png"
++export APP_ICON_ADAPTIVE_FG_BETA="$DIRNAME/icon_adaptive_fg-dbg.png"
++
++export APP_NAME_DEBUG="SuperTuxKart Debug"
++export PACKAGE_NAME_DEBUG="org.supertuxkart.stk_dbg"
++export PACKAGE_CLASS_NAME_DEBUG="org/supertuxkart/stk_dbg"
++export APP_DIR_NAME_DEBUG="supertuxkart-dbg"
++export APP_ICON_DEBUG="$DIRNAME/icon-dbg.png"
++export APP_ICON_ADAPTIVE_BG_DEBUG="$DIRNAME/icon_adaptive_bg-dbg.png"
++export APP_ICON_ADAPTIVE_FG_DEBUG="$DIRNAME/icon_adaptive_fg-dbg.png"
++
++
++# A helper function that checks if error ocurred
++check_error()
++{
++    if [ $? -gt 0 ]; then
++        echo "Error ocurred."
++        exit
++    fi
++}
++
++# Handle clean command
++if [ ! -z "$1" ] && [ "$1" = "clean" ]; then
++    rm -rf "$DIRNAME/bin"
++    rm -rf "$DIRNAME/build"
++    rm -rf "$DIRNAME/libs"
++    rm -rf "$DIRNAME/obj"
++    rm -rf "$DIRNAME/res"
++    rm -rf "$DIRNAME/.gradle"
++    rm -rf "$DIRNAME/.cxx"
++    exit
++fi
++
++# Update variables for selected architecture
++if [ -z "$COMPILE_ARCH" ]; then
++    COMPILE_ARCH="all"
++fi
++
++if [ "$COMPILE_ARCH" = "armv7" ]; then
++    COMPILE_ARCH="armeabi-v7a"
++elif [ "$COMPILE_ARCH" = "aarch64" ]; then
++    COMPILE_ARCH="arm64-v8a"
++elif [ "$COMPILE_ARCH" != "x86" ] && [ "$COMPILE_ARCH" != "x86_64" ] && \
++     [ "$COMPILE_ARCH" != "all" ]; then
++    echo "Unknown COMPILE_ARCH: $COMPILE_ARCH. Possible values are:" \
++         "all, armv7, aarch64, x86, x86_64"
++    exit
++fi
++
++# Update variables for selected build type
++if [ -z "$BUILD_TYPE" ]; then
++    BUILD_TYPE="debug"
++fi
++
++if [ "$BUILD_TYPE" = "debug" ] || [ "$BUILD_TYPE" = "Debug" ]; then
++    export GRADLE_BUILD_TYPE="assembleDebug"
++    export IS_DEBUG_BUILD=1
++    export APP_NAME="$APP_NAME_DEBUG"
++    export PACKAGE_NAME="$PACKAGE_NAME_DEBUG"
++    export PACKAGE_CLASS_NAME="$PACKAGE_CLASS_NAME_DEBUG"
++    export APP_DIR_NAME="$APP_DIR_NAME_DEBUG"
++    export APP_ICON="$APP_ICON_DEBUG"
++    export APP_ICON_ADAPTIVE_BG="$APP_ICON_ADAPTIVE_BG_DEBUG"
++    export APP_ICON_ADAPTIVE_FG="$APP_ICON_ADAPTIVE_FG_DEBUG"
++elif [ "$BUILD_TYPE" = "release" ] || [ "$BUILD_TYPE" = "Release" ]; then
++    export GRADLE_BUILD_TYPE="assembleRelease"
++    export IS_DEBUG_BUILD=0
++    export APP_NAME="$APP_NAME_RELEASE"
++    export PACKAGE_NAME="$PACKAGE_NAME_RELEASE"
++    export PACKAGE_CLASS_NAME="$PACKAGE_CLASS_NAME_RELEASE"
++    export APP_DIR_NAME="$APP_DIR_NAME_RELEASE"
++    export APP_ICON="$APP_ICON_RELEASE"
++    export APP_ICON_ADAPTIVE_BG="$APP_ICON_ADAPTIVE_BG_RELEASE"
++    export APP_ICON_ADAPTIVE_FG="$APP_ICON_ADAPTIVE_FG_RELEASE"
++elif [ "$BUILD_TYPE" = "beta" ] || [ "$BUILD_TYPE" = "Beta" ]; then
++    export GRADLE_BUILD_TYPE="assembleRelease"
++    export IS_DEBUG_BUILD=0
++    export APP_NAME="$APP_NAME_BETA"
++    export PACKAGE_NAME="$PACKAGE_NAME_BETA"
++    export PACKAGE_CLASS_NAME="$PACKAGE_CLASS_NAME_BETA"
++    export APP_DIR_NAME="$APP_DIR_NAME_BETA"
++    export APP_ICON="$APP_ICON_BETA"
++    export APP_ICON_ADAPTIVE_BG="$APP_ICON_ADAPTIVE_BG_BETA"
++    export APP_ICON_ADAPTIVE_FG="$APP_ICON_ADAPTIVE_FG_BETA"
++else
++    echo "Unsupported BUILD_TYPE: $BUILD_TYPE. Possible values are: " \
++         "debug, release"
++    exit
++fi
++
++# Check if we have access to the Android NDK and SDK
++if [ -z "$NDK_PATH" ]; then
++    export NDK_PATH="$NDK_PATH_DEFAULT"
++fi
++
++if [ -z "$SDK_PATH" ]; then
++    export SDK_PATH="$SDK_PATH_DEFAULT"
++fi
++
++NDK_PATH="$(realpath "$NDK_PATH")/${STK_NDK_VERSION}"
++SDK_PATH=$(realpath "$SDK_PATH")
++
++if [ ! -d "$NDK_PATH" ]; then
++    echo "Error: Couldn't find $NDK_PATH directory. Please create a symlink" \
++         "to your Android NDK installation in the $NDK_PATH_DEFAULT or set"  \
++         "proper path in the NDK_PATH variable"
++    exit
++fi
++
++if [ ! -d "$SDK_PATH" ]; then
++    echo "Error: Couldn't find $SDK_PATH directory. Please create a symlink" \
++         "to your Android SDK installation in the $SDK_PATH_DEFAULT or set"  \
++         "proper path in the SDK_PATH variable"
++    exit
++fi
++
++# Check if we have key for signing in release build
++# if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
++#     if [ -z "$STK_KEYSTORE" ]; then
++#         echo "Error: STK_KEYSTORE variable is empty."
++#         exit
++#     fi
++# 
++#     if [ ! -f "$STK_KEYSTORE" ]; then
++#         echo "Error: Couldn't find $STK_KEYSTORE file."
++#         exit
++#     fi
++# 
++#     if [ -z "$STK_STOREPASS" ]; then
++#         echo "Error: STK_STOREPASS variable is empty"
++#         exit
++#     fi
++# 
++#     if [ -z "$STK_ALIAS" ]; then
++#         echo "Error: STK_ALIAS variable is empty."
++#         exit
++#     fi
++# else
++#     STK_KEYSTORE="empty"
++#     STK_STOREPASS="empty"
++#     STK_ALIAS="empty"
++# fi
++
++# Find newest build-tools version
++if [ -z "$BUILD_TOOLS_VER" ]; then
++    BUILD_TOOLS_DIRS=`ls -1 "$SDK_PATH/build-tools" | sort -V -r`
++   
++    for DIR in $BUILD_TOOLS_DIRS; do
++        if [ "$DIR" = "`echo $DIR | sed 's/[^0-9,.]//g'`" ]; then
++            BUILD_TOOLS_VER="$DIR"
++            break
++        fi
++    done
++fi
++
++if [ -z "$BUILD_TOOLS_VER" ] || [ ! -d "$SDK_PATH/build-tools/$BUILD_TOOLS_VER" ]; then
++    echo "Error: Couldn't detect build-tools version."
++    exit
++fi
++
++BUILD_TOOLS_FULL=(${BUILD_TOOLS_VER//./ })
++export COMPILE_SDK_VERSION="${BUILD_TOOLS_FULL[0]}"
++
++# Set project version and code
++if [ -f "$DIRNAME/obj/project_version" ]; then
++    PROJECT_VERSION_PREV=$(cat "$DIRNAME/obj/project_version") 
++
++    if [ -z "$PROJECT_VERSION" ]; then
++        export PROJECT_VERSION="$PROJECT_VERSION_PREV"
++    elif [ "$PROJECT_VERSION" != "$PROJECT_VERSION_PREV" ]; then
++        echo "Different project version has been set. Forcing recompilation..."
++        touch -c "$DIRNAME/Android.mk"
++    fi
++fi
++
++if [ -z "$PROJECT_VERSION" ]; then
++    if [ $IS_DEBUG_BUILD -ne 0 ]; then
++        export PROJECT_VERSION="git"
++    else
++        echo "Error: Variable PROJECT_VERSION is not set. It must have unique" \
++             "value for release build."
++        exit
++    fi
++fi
++
++if [ -z "$PROJECT_CODE" ]; then
++    if [ $IS_DEBUG_BUILD -ne 0 ]; then
++        PROJECT_CODE="1"
++    else
++        echo "Error: Variable PROJECT_CODE is not set."
++        exit
++    fi
++fi
++
++if [ -d "$DIRNAME/assets/data" ]; then
++    if [ ! -f "$DIRNAME/assets/data/supertuxkart.$PROJECT_VERSION" ]; then
++        echo "Error: supertuxkart.$PROJECT_VERSION doesn't exist in" \
++             "assets/data directory."
++        exit
++    fi
++fi
++
++# Standalone toolchain
++if [ ! -f "$DIRNAME/obj/make_standalone_toolchain.stamp" ]; then
++    echo "Creating standalone toolchain"
++    rm -rf "$DIRNAME/obj"
++    mkdir "$DIRNAME/obj"
++    touch "$DIRNAME/obj/make_standalone_toolchain.stamp"
++fi
++
++echo "$PROJECT_VERSION" > "$DIRNAME/obj/project_version"
++
++# Build apk
++echo "Building APK"
++
++mkdir -p "$DIRNAME/res/drawable/"
++mkdir -p "$DIRNAME/res/drawable-anydpi-v26/"
++mkdir -p "$DIRNAME/res/drawable-mdpi/"
++mkdir -p "$DIRNAME/res/drawable-hdpi/"
++mkdir -p "$DIRNAME/res/drawable-xhdpi/"
++mkdir -p "$DIRNAME/res/drawable-xxhdpi/"
++mkdir -p "$DIRNAME/res/drawable-xxxhdpi/"
++rm -rf "$DIRNAME/res/values*"
++mkdir -p "$DIRNAME/res/values/"
++
++STYLES_FILE="$DIRNAME/res/values/styles.xml"
++
++echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>"       >  "$STYLES_FILE"
++echo "<!--Generated by make.sh-->"                      >>  "$STYLES_FILE"
++echo "<resources>"                                      >> "$STYLES_FILE"
++echo "    <style name=\"Theme.STKSplashScreen\" parent=\"android:style/Theme.Holo\">" >> "$STYLES_FILE"
++echo "         <item name=\"android:windowBackground\">#A8A8A8</item>" >> "$STYLES_FILE"
++echo "         <item name=\"android:windowFullscreen\">true</item>" >> "$STYLES_FILE"
++echo "         <item name=\"android:windowNoTitle\">true</item>" >> "$STYLES_FILE"
++echo "         <item name=\"android:windowLayoutInDisplayCutoutMode\">shortEdges</item>" >> "$STYLES_FILE"
++echo "         <item name=\"android:windowContentOverlay\">@null</item>" >> "$STYLES_FILE"
++echo "    </style>"                                     >> "$STYLES_FILE"
++echo "</resources>"                                     >> "$STYLES_FILE"
++
++STRINGS_FILE="$DIRNAME/res/values/strings.xml"
++
++# Strings used in stk android ui (when extracting game data first time)
++PO_EXTRACT_GAME_DATA="po_extract_game_data"
++PO_EXTRACT_GAME_DATA_STR="Extracting game data..."
++PO_EXTRACT_ERROR="po_extract_error"
++PO_EXTRACT_ERROR_STR="Game data extraction error"
++PO_EXTRACT_ERROR_MSG="po_extract_error_msg"
++PO_EXTRACT_ERROR_MSG_STR="Check remaining device space or reinstall SuperTuxKart."
++PO_QUIT="po_quit"
++PO_QUIT_STR="Quit"
++
++echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>"       >  "$STRINGS_FILE"
++echo "<!--Generated by make.sh-->"                      >>  "$STRINGS_FILE"
++echo "<resources>"                                      >> "$STRINGS_FILE"
++echo "    <string name=\"app_name\">$APP_NAME</string>" >> "$STRINGS_FILE"
++echo "    <string name=\"$PO_EXTRACT_GAME_DATA\">$PO_EXTRACT_GAME_DATA_STR</string>" >> "$STRINGS_FILE"
++echo "    <string name=\"$PO_EXTRACT_ERROR\">$PO_EXTRACT_ERROR_STR</string>" >> "$STRINGS_FILE"
++echo "    <string name=\"$PO_EXTRACT_ERROR_MSG\">$PO_EXTRACT_ERROR_MSG_STR</string>" >> "$STRINGS_FILE"
++echo "    <string name=\"$PO_QUIT\">$PO_QUIT_STR</string>" >> "$STRINGS_FILE"
++echo "</resources>"                                     >> "$STRINGS_FILE"
++
++translate_str()
++{
++    echo $(grep -A 1 -e "msgid \"$1\"" "$2" \
++        | sed -n 's/msgstr "\(.*\)"/\1/p' | sed "s/'/\\\'/g")
++}
++
++create_translation()
++{
++    PO="$1"
++    CUR_LANG=$(basename -- "$PO" | cut -f 1 -d '.')
++    # Skip english po file
++    if [ "$CUR_LANG" = "en" ]; then
++        return
++    fi
++    # Fix some difference in language code
++    if [ "$CUR_LANG" = "he" ]; then
++        # Hebrew
++        CUR_LANG="iw"
++    fi
++    if [ "$CUR_LANG" = "id" ]; then
++        # Indonesian
++        CUR_LANG="in"
++    fi
++    if [ "$CUR_LANG" = "yi" ]; then
++        # Yiddish
++        CUR_LANG="ji"
++    fi
++    CUR_LANG=$(echo "$CUR_LANG" | sed 's/_/-r/g')
++    EXTRACT_GAME_DATA_STR=$(translate_str "$PO_EXTRACT_GAME_DATA_STR" "$PO")
++    EXTRACT_ERROR_STR=$(translate_str "$PO_EXTRACT_ERROR_STR" "$PO")
++    EXTRACT_ERROR_MSG_STR=$(translate_str "$PO_EXTRACT_ERROR_MSG_STR" "$PO")
++    QUIT_STR=$(translate_str "$PO_QUIT_STR" "$PO")
++    if [ -n "$EXTRACT_GAME_DATA_STR" ] \
++    || [ -n "$EXTRACT_ERROR_STR" ] \
++    || [ -n "$EXTRACT_ERROR_MSG_STR" ] \
++    || [ -n "$QUIT_STR" ]; then
++        mkdir -p "$DIRNAME/res/values-$CUR_LANG"
++        TRANSLATION="$DIRNAME/res/values-$CUR_LANG/strings.xml"
++        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>"       >  "$TRANSLATION"
++        echo "<!--Generated by make.sh-->"                      >>  "$TRANSLATION"
++        echo "<resources>"                                      >> "$TRANSLATION"
++        if [ -n "$EXTRACT_GAME_DATA_STR" ] ; then
++            echo "    <string name=\"$PO_EXTRACT_GAME_DATA\">$EXTRACT_GAME_DATA_STR</string>" >> "$TRANSLATION"
++        fi
++        if [ -n "$EXTRACT_ERROR_STR" ] ; then
++            echo "    <string name=\"$PO_EXTRACT_ERROR\">$EXTRACT_ERROR_STR</string>" >> "$TRANSLATION"
++        fi
++        if [ -n "$EXTRACT_ERROR_MSG_STR" ] ; then
++            echo "    <string name=\"$PO_EXTRACT_ERROR_MSG\">$EXTRACT_ERROR_MSG_STR</string>" >> "$TRANSLATION"
++        fi
++        if [ -n "$QUIT_STR" ] ; then
++            echo "    <string name=\"$PO_QUIT\">$QUIT_STR</string>" >> "$TRANSLATION"
++        fi
++        echo "</resources>"                                     >> "$TRANSLATION"
++    fi
++}
++
++find "$DIRNAME/assets/data/po" -type f -name '*.po' | while read -r f; do create_translation "$f"; done
++
++ADAPTIVE_ICON_FILE="$DIRNAME/res/drawable-anydpi-v26/icon.xml"
++
++echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>"                      >  "$ADAPTIVE_ICON_FILE"
++echo "<adaptive-icon"                                                  >> "$ADAPTIVE_ICON_FILE"
++echo "  xmlns:android=\"http://schemas.android.com/apk/res/android\">" >> "$ADAPTIVE_ICON_FILE"
++echo "    <background android:drawable=\"@drawable/icon_bg\" />"       >> "$ADAPTIVE_ICON_FILE"
++echo "    <foreground android:drawable=\"@drawable/icon_fg\" />"       >> "$ADAPTIVE_ICON_FILE"
++echo "</adaptive-icon>"                                                >> "$ADAPTIVE_ICON_FILE"
++
++sed -i "s/package org.supertuxkart.*/package $PACKAGE_NAME;/g" \
++       "$DIRNAME/src/main/java/STKEditText.java"
++
++sed -i "s/import org.supertuxkart.*/import $PACKAGE_NAME.STKInputConnection;/g" \
++       "$DIRNAME/src/main/java/STKEditText.java"
++
++sed -i "s/package org.supertuxkart.*/package $PACKAGE_NAME;/g" \
++       "$DIRNAME/src/main/java/STKInputConnection.java"
++
++sed -i "s/import org.supertuxkart.*.STKEditText;/import $PACKAGE_NAME.STKEditText;/g" \
++       "$DIRNAME/src/main/java/STKInputConnection.java"
++
++sed -i "s/package org.supertuxkart.*/package $PACKAGE_NAME;/g" \
++       "$DIRNAME/src/main/java/SuperTuxKartActivity.java"
++
++sed -i "s/import org.supertuxkart.*/import $PACKAGE_NAME.STKEditText;/g" \
++       "$DIRNAME/src/main/java/SuperTuxKartActivity.java"
++
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/HIDDevice.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/HIDDeviceBLESteamController.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/HIDDeviceManager.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/HIDDeviceUSB.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLActivity.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLAudioManager.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLControllerManager.java" \
++       "$DIRNAME/src/main/java/"
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDL.java" \
++       "$DIRNAME/src/main/java/"
++# This will most likely fail (SDLSurface doesn't exist)
++cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLSurface.java" \
++       "$DIRNAME/src/main/java/"
++
++cp "banner.png" "$DIRNAME/res/drawable/banner.png"
++cp "$APP_ICON" "$DIRNAME/res/drawable/icon.png"
++convert -scale 48x48 "$APP_ICON" "$DIRNAME/res/drawable-mdpi/icon.png"
++convert -scale 72x72 "$APP_ICON" "$DIRNAME/res/drawable-hdpi/icon.png"
++convert -scale 96x96 "$APP_ICON" "$DIRNAME/res/drawable-xhdpi/icon.png"
++convert -scale 144x144 "$APP_ICON" "$DIRNAME/res/drawable-xxhdpi/icon.png"
++convert -scale 192x192 "$APP_ICON" "$DIRNAME/res/drawable-xxxhdpi/icon.png"
++
++#convert -scale 108x108 "$APP_ICON_ADAPTIVE_BG" "$DIRNAME/res/drawable-mdpi/icon_bg.png"
++#convert -scale 162x162 "$APP_ICON_ADAPTIVE_BG" "$DIRNAME/res/drawable-hdpi/icon_bg.png"
++#convert -scale 216x216 "$APP_ICON_ADAPTIVE_BG" "$DIRNAME/res/drawable-xhdpi/icon_bg.png"
++#convert -scale 324x324 "$APP_ICON_ADAPTIVE_BG" "$DIRNAME/res/drawable-xxhdpi/icon_bg.png"
++#convert -scale 432x432 "$APP_ICON_ADAPTIVE_BG" "$DIRNAME/res/drawable-xxxhdpi/icon_bg.png"
++
++convert -scale 108x108 xc:"rgba(255,255,255,255)" "$DIRNAME/res/drawable-mdpi/icon_bg.png"
++convert -scale 162x162 xc:"rgba(255,255,255,255)" "$DIRNAME/res/drawable-hdpi/icon_bg.png"
++convert -scale 216x216 xc:"rgba(255,255,255,255)" "$DIRNAME/res/drawable-xhdpi/icon_bg.png"
++convert -scale 324x324 xc:"rgba(255,255,255,255)" "$DIRNAME/res/drawable-xxhdpi/icon_bg.png"
++convert -scale 432x432 xc:"rgba(255,255,255,255)" "$DIRNAME/res/drawable-xxxhdpi/icon_bg.png"
++
++convert -scale 108x108 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-mdpi/icon_fg.png"
++convert -scale 162x162 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-hdpi/icon_fg.png"
++convert -scale 216x216 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-xhdpi/icon_fg.png"
++convert -scale 324x324 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-xxhdpi/icon_fg.png"
++convert -scale 432x432 "$APP_ICON_ADAPTIVE_FG" "$DIRNAME/res/drawable-xxxhdpi/icon_fg.png"
++
++echo "COMPILE_SDK_VERSION=$COMPILE_SDK_VERSION"
++echo "STK_MIN_ANDROID_SDK=$STK_MIN_ANDROID_SDK"
++echo "STK_TARGET_ANDROID_SDK=$STK_TARGET_ANDROID_SDK"
++echo "STK_STOREPASS=$STK_STOREPASS"
++echo "STK_KEYSTORE=$STK_KEYSTORE"
++echo "STK_ALIAS=$STK_ALIAS"
++echo "STK_NDK_VERSION=$STK_NDK_VERSION"
++echo "COMPILE_ARCH=$COMPILE_ARCH"
++echo "CPU_CORE=$CPU_CORE"
++echo "PACKAGE_NAME=$PACKAGE_NAME"
++echo "PROJECT_VERSION=$PROJECT_VERSION"
++echo "PROJECT_CODE=$PROJECT_CODE"
++echo "GRADLE_BUILD_TYPE=$GRADLE_BUILD_TYPE"
++
++export ANDROID_HOME="$SDK_PATH"
++
++#./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
++#./gradlew clean -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
++./gradlew -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
++          -Pmin_sdk_version="$STK_MIN_ANDROID_SDK"       \
++          -Ptarget_sdk_version="$STK_TARGET_ANDROID_SDK" \
++          -Pstorepass="$STK_STOREPASS"                   \
++          -Pkeystore="$STK_KEYSTORE"                     \
++          -Palias="$STK_ALIAS"                           \
++          -Pndk_version="$STK_NDK_VERSION"               \
++          -Pcompile_arch="$COMPILE_ARCH"                 \
++          -Pcpu_core="$CPU_CORE"                         \
++          -Ppackage_name="$PACKAGE_NAME"                 \
++          -Pversion_name="$PROJECT_VERSION"              \
++          -Pversion_code="$PROJECT_CODE"                 \
++          $GRADLE_BUILD_TYPE
++
++# if [ "$GRADLE_BUILD_TYPE" = "assembleRelease" ]; then
++# ./gradlew -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
++# #./gradlew clean -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
++# #./gradlew -Dorg.gradle.java.home=/home/jonas/.jdks/temurin-11.0.21 -Pcompile_sdk_version="$COMPILE_SDK_VERSION"   \
++#           -Pmin_sdk_version="$STK_MIN_ANDROID_SDK"       \
++#           -Ptarget_sdk_version="$STK_TARGET_ANDROID_SDK" \
++#           -Pstorepass="$STK_STOREPASS"                   \
++#           -Pkeystore="$STK_KEYSTORE"                     \
++#           -Palias="$STK_ALIAS"                           \
++#           -Pndk_version="$STK_NDK_VERSION"               \
++#           -Pcompile_arch="$COMPILE_ARCH"                 \
++#           -Pcpu_core="$CPU_CORE"                         \
++#           -Ppackage_name="$PACKAGE_NAME"                 \
++#           -Pversion_name="$PROJECT_VERSION"              \
++#           -Pversion_code="$PROJECT_CODE"                 \
++#           "bundleRelease"
++# fi
++
++check_error
+diff --git a/android/src/main/java/STKEditText.java b/android/src/main/java/STKEditText.java
+index c4e9bb2e4..980d2d0e4 100644
+--- a/android/src/main/java/STKEditText.java
++++ b/android/src/main/java/STKEditText.java
+@@ -1,7 +1,7 @@
+-package org.supertuxkart.stk_dbg;
++package org.supertuxkart.stk;
+ 
+ import org.libsdl.app.SDLActivity;
+-import org.supertuxkart.stk_dbg.STKInputConnection;
++import org.supertuxkart.stk.STKInputConnection;
+ 
+ import android.content.Context;
+ import android.text.InputType;
+diff --git a/android/src/main/java/STKInputConnection.java b/android/src/main/java/STKInputConnection.java
+index 3ba888c1f..597d10a0a 100644
+--- a/android/src/main/java/STKInputConnection.java
++++ b/android/src/main/java/STKInputConnection.java
+@@ -1,6 +1,6 @@
+-package org.supertuxkart.stk_dbg;
++package org.supertuxkart.stk;
+ 
+-import org.supertuxkart.stk_dbg.STKEditText;
++import org.supertuxkart.stk.STKEditText;
+ 
+ import android.view.inputmethod.InputConnection;
+ import android.view.inputmethod.InputConnectionWrapper;
+diff --git a/android/src/main/java/SuperTuxKartActivity.java b/android/src/main/java/SuperTuxKartActivity.java
+index 189b24c85..07ec79d3b 100644
+--- a/android/src/main/java/SuperTuxKartActivity.java
++++ b/android/src/main/java/SuperTuxKartActivity.java
+@@ -1,6 +1,6 @@
+-package org.supertuxkart.stk_dbg;
++package org.supertuxkart.stk;
+ 
+-import org.supertuxkart.stk_dbg.STKEditText;
++import org.supertuxkart.stk.STKEditText;
+ import org.libsdl.app.SDLActivity;
+ import org.libsdl.app.SDL;
+ 
+diff --git a/android/test.txt b/android/test.txt
+new file mode 100644
+index 000000000..bddd51d0c
+--- /dev/null
++++ b/android/test.txt
+@@ -0,0 +1,101 @@
++Building APK
++cp: cannot stat '/home/jonas/Code2/C++/stk-code/android/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLSurface.java': No such file or directory
++COMPILE_SDK_VERSION=30
++STK_MIN_ANDROID_SDK=16
++STK_TARGET_ANDROID_SDK=30
++STK_STOREPASS=empty
++STK_KEYSTORE=empty
++STK_ALIAS=empty
++STK_NDK_VERSION=23.1.7779620
++COMPILE_ARCH=arm64-v8a
++CPU_CORE=-j17
++PACKAGE_NAME=org.supertuxkart.stk_dbg
++PROJECT_VERSION=git
++PROJECT_CODE=1
++GRADLE_BUILD_TYPE=assembleDebug
++Starting a Gradle Daemon, 3 incompatible Daemons could not be reused, use --status for details
++
++> Task :externalNativeBuildCleanDebug
++Clean main-arm64-v8a, graphics_utils-arm64-v8a, irrlicht-arm64-v8a, angelscript-arm64-v8a, SDL2-arm64-v8a, enet-arm64-v8a, tinygettext-arm64-v8a, graphics_engine-arm64-v8a, cpufeatures-arm64-v8a, bullet-arm64-v8a, ifaddrs-arm64-v8a, sheenbidi-arm64-v8a, mcpp-arm64-v8a
++
++> Task :externalNativeBuildCleanRelease
++> Task :clean
++> Task :preBuild UP-TO-DATE
++> Task :preDebugBuild UP-TO-DATE
++> Task :mergeDebugNativeDebugMetadata NO-SOURCE
++> Task :compileDebugAidl NO-SOURCE
++> Task :compileDebugRenderscript NO-SOURCE
++> Task :generateDebugBuildConfig
++> Task :javaPreCompileDebug
++> Task :checkDebugAarMetadata
++> Task :generateDebugResValues
++> Task :mapDebugSourceSetPaths
++> Task :generateDebugResources
++> Task :createDebugCompatibleScreenManifests
++> Task :extractDeepLinksDebug
++> Task :processDebugMainManifest
++> Task :mergeDebugResources
++> Task :processDebugManifest
++> Task :mergeDebugShaders
++> Task :compileDebugShaders NO-SOURCE
++> Task :generateDebugAssets UP-TO-DATE
++> Task :mergeDebugAssets
++> Task :processDebugJavaRes NO-SOURCE
++> Task :checkDebugDuplicateClasses
++> Task :desugarDebugFileDependencies
++> Task :mergeDebugJavaResource
++> Task :compressDebugAssets
++> Task :configureNdkBuildDebug[arm64-v8a]
++> Task :processDebugManifestForPackage
++> Task :buildNdkBuildDebug[arm64-v8a]
++C/C++: ./../src/karts/controller/test_ai.cpp:1555:42: warning: implicit conversion from 'int' to 'float' changes value from 2147483647 to 2147483648 [-Wimplicit-const-int-float-conversion]
++C/C++:                       + (float) rand() / RAND_MAX
++C/C++:                                        ~ ^~~~~~~~
++C/C++: /home/jonas/Android/Sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/stdlib.h:132:18: note: expanded from macro 'RAND_MAX'
++C/C++: #define RAND_MAX 0x7fffffff
++C/C++:                  ^~~~~~~~~~
++C/C++: ./../src/karts/controller/test_ai.cpp:1564:22: warning: implicit conversion from 'int' to 'float' changes value from 2147483647 to 2147483648 [-Wimplicit-const-int-float-conversion]
++C/C++:         if (rand() < RAND_MAX * false_start_probability)
++C/C++:                      ^~~~~~~~ ~
++C/C++: /home/jonas/Android/Sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/stdlib.h:132:18: note: expanded from macro 'RAND_MAX'
++C/C++: #define RAND_MAX 0x7fffffff
++C/C++:                  ^~~~~~~~~~
++C/C++: 2 warnings generated.
++C/C++: ./../lib/irrlicht/source/Irrlicht/CNullDriver.cpp:951:10: warning: binding dereferenced null pointer to reference has undefined behavior [-Wnull-dereference]
++C/C++:                 return *((SLight*)0);
++C/C++:                        ^~~~~~~~~~~~~
++C/C++: 1 warning generated.
++C/C++: ./../lib/irrlicht/source/Irrlicht/COGLES2Driver.cpp:2641:11: warning: binding dereferenced null pointer to reference has undefined behavior [-Wnull-dereference]
++C/C++:                         return *((core::plane3df*)0);
++C/C++:                                ^~~~~~~~~~~~~~~~~~~~~
++C/C++: 1 warning generated.
++C/C++: ./../lib/irrlicht/source/Irrlicht/os.cpp:239:22: warning: implicit conversion from 'const irr::s32' (aka 'const int') to 'float' changes value from 2147483398 to 2147483392 [-Wimplicit-const-int-float-conversion]
++C/C++:                 return rand()*(1.f/rMax);
++C/C++:                                   ~^~~~
++C/C++: 1 warning generated.
++C/C++: ./../lib/irrlicht/source/Irrlicht/CSceneManager.cpp:910:9: warning: binding dereferenced null pointer to reference has undefined behavior [-Wnull-dereference]
++C/C++:         return *((core::aabbox3d<f32>*)0);
++C/C++:                ^~~~~~~~~~~~~~~~~~~~~~~~~~
++C/C++: 1 warning generated.
++
++> Task :externalNativeBuildDebug
++> Task :mergeDebugJniLibFolders
++> Task :validateSigningDebug
++> Task :writeDebugAppMetadata
++> Task :writeDebugSigningConfigVersions
++> Task :processDebugResources
++> Task :mergeDebugNativeLibs
++
++> Task :compileDebugJavaWithJavac
++Note: Some input files use or override a deprecated API.
++Note: Recompile with -Xlint:deprecation for details.
++
++> Task :dexBuilderDebug
++> Task :stripDebugDebugSymbols
++> Task :mergeDexDebug
++> Task :packageDebug
++> Task :createDebugApkListingFileRedirect
++> Task :assembleDebug
++
++BUILD SUCCESSFUL in 1m 39s
++35 actionable tasks: 35 executed
+diff --git a/data/gui/dialogs/addons_loading.stkgui b/data/gui/dialogs/addons_loading.stkgui
+index a776f12c8..d7185a2e2 100644
+--- a/data/gui/dialogs/addons_loading.stkgui
++++ b/data/gui/dialogs/addons_loading.stkgui
+@@ -29,15 +29,15 @@
+ 
+         <div width="80%" proportion="4" align="center">
+             <buttonbar id="actions" x="0" y="0" height="100%" width="100%" align="center">
+-                <icon-button id="back" width="128" height="128"
+-                             icon="gui/icons/back.png"
+-                             I18N="Add-on screen action" text="Back" />
+                 <icon-button id="install" width="128" height="128"
+                              icon="gui/icons/package-update.png"
+                              I18N="Add-on screen action"  text="Install" />
+                 <icon-button id="uninstall" width="128" height="128"
+                              icon="gui/icons/package-uninstall.png"
+                              I18N="Add-on screen action" text="Uninstall" />
++                <icon-button id="back" width="128" height="128"
++                             icon="gui/icons/back.png"
++                             I18N="Add-on screen action" text="Back" />
+             </buttonbar>
+         </div>
+     </div>
+diff --git a/data/gui/dialogs/confirm_dialog.stkgui b/data/gui/dialogs/confirm_dialog.stkgui
+index a5b88ff88..600e28fe3 100644
+--- a/data/gui/dialogs/confirm_dialog.stkgui
++++ b/data/gui/dialogs/confirm_dialog.stkgui
+@@ -1,18 +1,19 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <stkgui>
+     <div x="2%" y="5%" width="96%" height="90%" layout="vertical-row" >
+-        <label height="65%" id="title" width="100%" text_align="center" word_wrap="true"/>
++        <label height="65%" id="title" width="100%" text_align="top" word_wrap="true"/>
+ 
+         <spacer height="5%" width="10" />
+ 
+         <buttonbar id="buttons" height="30%" width="70%" align="center">
+ 
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/red_x.png"
+-                I18N="In a 'are you sure?' dialog" text="Cancel" align="center"/>
+-
+             <icon-button id="confirm" width="128" height="128" icon="gui/icons/green_check.png"
+                 I18N="In a 'are you sure?' dialog" text="Yes" align="center"/>
+ 
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/remove.png"
++                I18N="In a 'are you sure?' dialog" text="Cancel" align="center"/>
++
+         </buttonbar>
++        <spacer width="20" height="1f" />
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/confirm_resolution_dialog.stkgui b/data/gui/dialogs/confirm_resolution_dialog.stkgui
+index 71a8b18ff..a49eff99a 100644
+--- a/data/gui/dialogs/confirm_resolution_dialog.stkgui
++++ b/data/gui/dialogs/confirm_resolution_dialog.stkgui
+@@ -7,12 +7,12 @@
+ 
+         <buttonbar id="buttons" height="30%" width="30%" align="center">
+ 
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/restart.png"
+-                I18N="In the 'confirm resolution' dialog, that's shown when switching resoluton" text="Revert" align="center"/>
+-
+             <icon-button id="accept" width="128" height="128" icon="gui/icons/green_check.png"
+                 I18N="In the 'confirm resolution' dialog, that's shown when switching resoluton" text="Accept" align="center"/>
+ 
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/restart.png"
++                I18N="In the 'confirm resolution' dialog, that's shown when switching resoluton" text="Revert" align="center"/>
++
+         </buttonbar>
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/custom_camera_settings.stkgui b/data/gui/dialogs/custom_camera_settings.stkgui
+index e0e12f1cb..19fc7ed77 100644
+--- a/data/gui/dialogs/custom_camera_settings.stkgui
++++ b/data/gui/dialogs/custom_camera_settings.stkgui
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <stkgui>
+-    <div x="2%" y="2%" width="96%" height="96%" layout="vertical-row" >
++    <div x="2%" y="1%" width="96%" height="98%" layout="vertical-row" >
+         <header id="title" width="100%" height="fit" text_align="center" word_wrap="true" text="Camera Settings" />
+         <spacer width="100%" height="3%"/>
+         <div width="100%" height="91%" layout="vertical-row" >
+@@ -75,12 +75,12 @@
+             <spacer height="2%" width="100%" />
+ 
+             <buttonbar id="buttons" height="20%" width="90%" align="center">
++                <icon-button id="apply" width="128" height="128" icon="gui/icons/green_check.png"
++                    I18N="In the ui/camera screen" text="Apply" align="center"/>
+                 <icon-button id="reset" width="128" height="128" icon="gui/icons/restart.png"
+                     I18N="In the ui/camera screen" text="Reset" align="center"/>
+-                <icon-button id="cancel" width="128" height="128" icon="gui/icons/red_x.png"
++                <icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
+                     I18N="In the ui/camera screen" text="Cancel" align="center"/>
+-                <icon-button id="apply" width="128" height="128" icon="gui/icons/green_check.png"
+-                    I18N="In the ui/camera screen" text="Apply" align="center"/>
+             </buttonbar>
+         </div>
+     </div>
+diff --git a/data/gui/dialogs/custom_video_settings.stkgui b/data/gui/dialogs/custom_video_settings.stkgui
+index 814ea699c..11844bfa8 100644
+--- a/data/gui/dialogs/custom_video_settings.stkgui
++++ b/data/gui/dialogs/custom_video_settings.stkgui
+@@ -174,10 +174,10 @@
+         <spacer height="4" width="10"/>
+ 
+         <buttonbar id="buttons" height="15%" width="30%" align="center">
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/red_x.png"
+-                I18N="Video settings" text="Cancel" align="center"/>
+             <icon-button id="apply" width="128" height="128" icon="gui/icons/green_check.png"
+                 I18N="Video settings" text="Apply" align="center"/>
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
++                I18N="Video settings" text="Cancel" align="center"/>
+         </buttonbar>
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/enter_address_dialog.stkgui b/data/gui/dialogs/enter_address_dialog.stkgui
+index 2b79ea76b..a786ae92a 100644
+--- a/data/gui/dialogs/enter_address_dialog.stkgui
++++ b/data/gui/dialogs/enter_address_dialog.stkgui
+@@ -1,22 +1,23 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <stkgui>
+     <div x="2%" y="2%" width="96%" height="50%" layout="vertical-row">
+-        <label id="title" raw_text="Text" width="100%" height="36%" text_align="center" word_wrap="true"/>
+-        <list id="list_history" x="0" y="37%" width="100%" height="63%" word_wrap="true" />
++        <label id="title" raw_text="Text" width="100%" height="36%"/>
++        <list id="list_history" x="0" y="37%" width="96%" height="63%" word_wrap="true" />
+     </div>
+-    <div x="2%" y="60%" width="96%" height="40%" layout="vertical-row" >
++    <div x="2%" y="70%" width="96%" height="30%" layout="vertical-row" >
+         <spacer height="7%" width="10" />
+         <textbox id="textfield" width="75%" align="center" />
+         <spacer height="9%" width="10" />
+ 
+         <buttonbar id="buttons" height="50%" width="54%" align="center">
+ 
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/red_x.png"
+-                I18N="In the enter address dialog" text="Cancel" align="center"/>
+-
+             <icon-button id="ok" width="128" height="128" icon="gui/icons/green_check.png"
+-                I18N="In the enter address dialog" text="Join" align="center"/>
++                I18N="In the enter address dialog" text="OK" align="center"/>
++
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/remove.png"
++                I18N="In the enter address dialog" text="Cancel" align="center"/>
+ 
+         </buttonbar>
++        <spacer height="1f" width="20" />
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/general_text_field_dialog.stkgui b/data/gui/dialogs/general_text_field_dialog.stkgui
+index ae417a85b..68e2f96b0 100644
+--- a/data/gui/dialogs/general_text_field_dialog.stkgui
++++ b/data/gui/dialogs/general_text_field_dialog.stkgui
+@@ -5,16 +5,17 @@
+ 
+         <spacer height="7%" width="10" />
+         <textbox id="textfield" width="75%"  align="center"/>
+-        <spacer proportion="1" width="10" />
++        <spacer height="9%" width="10" />
+ 
+         <buttonbar id="buttons" height="36%" width="30%" align="center">
+ 
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/red_x.png"
+-                I18N="In the general textfield dialog" text="Cancel" align="center"/>
+-
+             <icon-button id="ok" width="128" height="128" icon="gui/icons/green_check.png"
+                 I18N="In the general textfield dialog" text="OK" align="center"/>
+ 
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/remove.png"
++                I18N="In the general textfield dialog" text="Cancel" align="center"/>
++
+         </buttonbar>
++        <spacer height="1f" width="20" />
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/ghost_replay_info_dialog.stkgui b/data/gui/dialogs/ghost_replay_info_dialog.stkgui
+index 5836f779c..634642728 100644
+--- a/data/gui/dialogs/ghost_replay_info_dialog.stkgui
++++ b/data/gui/dialogs/ghost_replay_info_dialog.stkgui
+@@ -38,18 +38,18 @@
+ 
+                 <div width="95%" height="40%" align="center">
+                     <buttonbar id="actions" x="0" y="0" height="100%" width="100%" align="center">
+-                        <icon-button id="back" width="128" height="128"
+-                                     icon="gui/icons/back.png"
+-                                     I18N="Ghost replay info action" text="Back" word_wrap="true" />
+-                        <icon-button id="remove" width="128" height="128"
+-                                     icon="gui/icons/remove.png"
+-                                     I18N="Ghost replay info action" text="Remove" word_wrap="true" />
+-                        <icon-button id="add-ghost-to-compare" width="128" height="128"
+-                                     icon="gui/icons/ghost_plus.png"
+-                                     I18N="Ghost replay info screen action" text="Compare ghost" word_wrap="true" />
+                         <icon-button id="start" width="128" height="128"
+                                      icon="gui/icons/green_check.png"
+                                      I18N="Ghost replay info screen action" text="Start Race" word_wrap="true" />
++                        <icon-button id="add-ghost-to-compare" width="128" height="128"
++                                     icon="gui/icons/ghost_plus.png"
++                                     I18N="Ghost replay info screen action" text="Compare ghost" word_wrap="true" />
++                        <icon-button id="remove" width="128" height="128"
++                                     icon="gui/icons/remove.png"
++                                     I18N="Ghost replay info action" text="Remove" word_wrap="true" />
++                        <icon-button id="back" width="128" height="128"
++                                     icon="gui/icons/back.png"
++                                     I18N="Ghost replay info action" text="Back" word_wrap="true" />
+                     </buttonbar>
+                 </div>
+                 <spacer width="10" height="10%"/>
+diff --git a/data/gui/dialogs/high_score_info_dialog.stkgui b/data/gui/dialogs/high_score_info_dialog.stkgui
+index 49499fdfc..c8add8a5d 100644
+--- a/data/gui/dialogs/high_score_info_dialog.stkgui
++++ b/data/gui/dialogs/high_score_info_dialog.stkgui
+@@ -39,15 +39,15 @@
+                 <spacer width="5" height="45%"/>
+                 <div width="95%" height="100%" align="center">
+                     <buttonbar id="actions" x="0" y="0" height="100%" width="100%" align="center">
+-                        <icon-button id="back" width="128" height="128"
+-                                     icon="gui/icons/back.png"
+-                                     I18N="High score info screen action" text="Back" word_wrap="true" />
+-                        <icon-button id="remove" width="128" height="128"
+-                                     icon="gui/icons/remove.png"
+-                                     I18N="High score info screen action" text="Remove" word_wrap="true" />
+                         <icon-button id="start" width="128" height="128"
+                                      icon="gui/icons/green_check.png"
+                                      I18N="High score info screen action" text="Start Race" word_wrap="true" />
++                        <icon-button id="remove" width="128" height="128"
++                                     icon="gui/icons/remove.png"
++                                     I18N="High score info screen action" text="Remove" word_wrap="true" />
++                        <icon-button id="back" width="128" height="128"
++                                     icon="gui/icons/back.png"
++                                     I18N="High score info screen action" text="Back" word_wrap="true" />
+                     </buttonbar>
+                 </div>
+                 <spacer width="10" height="10%"/>
+diff --git a/data/gui/dialogs/kart_color_slider.stkgui b/data/gui/dialogs/kart_color_slider.stkgui
+index d98e02d18..328778cdb 100644
+--- a/data/gui/dialogs/kart_color_slider.stkgui
++++ b/data/gui/dialogs/kart_color_slider.stkgui
+@@ -17,10 +17,10 @@
+         </div>
+         <spacer height="10" width="10"/>
+         <buttonbar id="buttons" height="20%" width="30%" align="center">
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/red_x.png"
+-                I18N="In the kart color slider dialog" text="Cancel" align="center"/>
+             <icon-button id="apply" width="128" height="128" icon="gui/icons/green_check.png"
+                 I18N="In the kart color slider dialog" text="Apply" align="center"/>
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
++                I18N="In the kart color slider dialog" text="Cancel" align="center"/>
+         </buttonbar>
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/online/change_password.stkgui b/data/gui/dialogs/online/change_password.stkgui
+index fafb98c45..87da0d9a7 100644
+--- a/data/gui/dialogs/online/change_password.stkgui
++++ b/data/gui/dialogs/online/change_password.stkgui
+@@ -1,6 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <stkgui>
+     <div x="2%" y="5%" width="96%" height="90%" layout="vertical-row" >
++
+         <header id="title" width="100%" height="fit" text_align="center" word_wrap="true"
+                 I18N="In the change password dialog" text="Password Change"/>
+ 
+@@ -29,16 +30,15 @@
+ 
+         <spacer height="2%" width="50"/>
+ 
+-        <label id="info" proportion="1" width="90%" align="center" text_align="center" word_wrap="true"
+-               I18N="In the change password dialog" text=""/>
++        <label id="info" proportion="1" width="90%" align="center" text_align="center" word_wrap="true" text=""/>
+ 
+         <spacer height="2%" width="50"/>
+ 
+         <buttonbar id="options" width="90%" height="16%" align="center">
+-            <icon-button id="cancel" width="64" height="64" icon="gui/icons/red_x.png"
+-                         I18N="In the change password dialog" text="Cancel" label_location="bottom"/>
+-            <icon-button id="submit" width="64" height="64" icon="gui/icons/green_check.png"
+-                         I18N="In the change password dialog"  text="Submit" label_location="bottom"/>
++                <icon-button id="submit" width="64" height="64" icon="gui/icons/green_check.png"
++                             I18N="In the change password dialog"  text="Submit" label_location="bottom"/>
++                <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                             I18N="In the change password dialog" text="Close" label_location="bottom"/>
+         </buttonbar>
+         <spacer height="1f" width="20"/>
+     </div>
+diff --git a/data/gui/dialogs/online/network_ingame_dialog.stkgui b/data/gui/dialogs/online/network_ingame_dialog.stkgui
+index f3f73ef89..14c8daa43 100644
+--- a/data/gui/dialogs/online/network_ingame_dialog.stkgui
++++ b/data/gui/dialogs/online/network_ingame_dialog.stkgui
+@@ -24,9 +24,6 @@
+ 
+         <buttonbar id="choiceribbon" proportion="4" width="100%" align="center">
+ 
+-            <icon-button id="exit" width="128" height="128" icon="gui/icons/main_quit.png"
+-                         I18N="Race paused button" text="Quit Server" word_wrap="true"/>
+-
+             <icon-button id="newrace" width="128" height="128" icon="gui/icons/main_race.png"
+                     I18N="Show in network ingame dialog to allow user to go back to lobby to end spectating (for example)"
+                     text="Back to lobby" word_wrap="true"/>
+@@ -43,6 +40,9 @@
+             <icon-button id="help" width="128" height="128" icon="gui/icons/main_help.png"
+                     I18N="Race paused button" text="Help" word_wrap="true"/>
+ 
++            <icon-button id="exit" width="128" height="128" icon="gui/icons/main_quit.png"
++                         I18N="Race paused button" text="Quit Server" word_wrap="true"/>
++
+         </buttonbar>
+ 
+         <spacer width="20" height="5%" />
+diff --git a/data/gui/dialogs/online/notification_dialog.stkgui b/data/gui/dialogs/online/notification_dialog.stkgui
+new file mode 100644
+index 000000000..74a723234
+--- /dev/null
++++ b/data/gui/dialogs/online/notification_dialog.stkgui
+@@ -0,0 +1,17 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<stkgui>
++    <div x="2%" y="5%" width="96%" height="90%" layout="vertical-row" >
++
++        <label id="info" proportion="1" width="90%" align="center" text_align="center" word_wrap="true" text=""/>
++
++        <spacer height="2%" width="50"/>
++
++        <buttonbar id="options" width="90%" height="30%" align="center">
++            <icon-button id="view" width="64" height="64" icon="gui/icons/difficulty_medium.png"
++                         I18N="User info dialog"  text="View" label_location="bottom"/>
++            <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                         I18N="User info dialog" text="Close" label_location="bottom"/>
++        </buttonbar>
++        <spacer height="1f" width="20"/>
++    </div>
++</stkgui>
+diff --git a/data/gui/dialogs/online/player_rankings_dialog.stkgui b/data/gui/dialogs/online/player_rankings_dialog.stkgui
+index 14d931ae3..0daddf2a3 100644
+--- a/data/gui/dialogs/online/player_rankings_dialog.stkgui
++++ b/data/gui/dialogs/online/player_rankings_dialog.stkgui
+@@ -18,12 +18,12 @@
+         <spacer height="1%" width="20" />
+ 
+         <buttonbar id="options" width="90%" height="14%" align="center">
+-            <icon-button id="refresh" width="128" height="128"
+-                         icon="gui/icons/restart.png"
+-                         text="Refresh" label_location="bottom"/>
+             <icon-button id="ok" width="128" height="128"
+                          icon="gui/icons/green_check.png" text="OK"
+                          label_location="bottom"/>
++            <icon-button id="refresh" width="128" height="128"
++                         icon="gui/icons/restart.png"
++                         text="Refresh" label_location="bottom"/>
+         </buttonbar>
+         <spacer height="1f" width="20"/>
+     </div>
+diff --git a/data/gui/dialogs/online/recovery_info.stkgui b/data/gui/dialogs/online/recovery_info.stkgui
+index 7b7a53353..e0c1c6f2e 100644
+--- a/data/gui/dialogs/online/recovery_info.stkgui
++++ b/data/gui/dialogs/online/recovery_info.stkgui
+@@ -2,18 +2,18 @@
+ <stkgui>
+     <div x="2%" y="5%" width="96%" height="90%" layout="vertical-row" >
+         <header id="title" width="96%" height="fit" text_align="center" word_wrap="true"
+-                I18N="In the recovery dialog" text="Account Recovery"/>
++            I18N="In the recovery dialog" text="Account Recovery"/>
+ 
+         <spacer height="2%" width="50"/>
+ 
+         <label id="info" proportion="1" width="90%" align="center" text_align="center" word_wrap="true" I18N="In the recovery dialog"
+-               text="You will receive an email with further instructions on how to reset your password. Please be patient and be sure to check your spam folder." />
++            text="You will receive an email with further instructions on how to reset your password. Please be patient and be sure to check your spam folder." />
+ 
+         <spacer height="2%" width="50"/>
+ 
+         <buttonbar id="options" width="25%" height="15%" align="center">
+             <icon-button id="cancel" width="64" height="64" icon="gui/icons/green_check.png"
+-                         I18N="In the recovery dialog" text="Close" label_location="none"/>
++                I18N="In the recovery dialog" text="Close" label_location="none"/>
+         </buttonbar>
+         <spacer width="20" height="1f" />
+     </div>
+diff --git a/data/gui/dialogs/online/recovery_input.stkgui b/data/gui/dialogs/online/recovery_input.stkgui
+index 2d4ad75b7..7ce99afe4 100644
+--- a/data/gui/dialogs/online/recovery_input.stkgui
++++ b/data/gui/dialogs/online/recovery_input.stkgui
+@@ -1,13 +1,13 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <stkgui>
+     <div x="2%" y="5%" width="96%" height="90%" layout="vertical-row" >
+-        <header id="title" width="100%" height="fit" text_align="center" word_wrap="true"
+-                I18N="In the recovery dialog" text="Account Recovery"/>
++        <header id="title" width="96%" height="fit" text_align="center" word_wrap="true"
++            I18N="In the recovery dialog" text="Account Recovery"/>
+ 
+         <spacer height="2%" width="50"/>
+ 
+         <label id="message" proportion="2" width="90%" align="center" text_align="left" word_wrap="true"
+-               text="Fill in the username and email address you supplied at registration to be able to reset your password."/>
++            text="Fill in the username and email address you supplied at registration to be able to reset your password."/>
+ 
+         <spacer height="4%" width="50"/>
+ 
+@@ -29,15 +29,15 @@
+         <spacer height="2%" width="50"/>
+ 
+         <label id="info" proportion="1" width="90%" align="center" text_align="center" word_wrap="true"
+-               I18N="In the recovery dialog" text=""/>
++           I18N="In the recovery dialog" text=""/>
+ 
+         <spacer height="2%" width="50"/>
+ 
+-        <buttonbar id="options" width="90%" proportion="1" align="center">
+-            <icon-button id="cancel" width="64" height="64" icon="gui/icons/red_x.png"
+-                         I18N="In the recovery dialog" text="Cancel" label_location="none"/>
++        <buttonbar id="options" width="25%" proportion="1" align="center">
+             <icon-button id="submit" width="64" height="64" icon="gui/icons/green_check.png"
+-                         I18N="In the recovery dialog" text="Submit" label_location="none"/>
++                I18N="In the recovery dialog" text="Submit" label_location="none"/>
++            <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                I18N="In the recovery dialog"  text="Cancel" label_location="none"/>
+         </buttonbar>
+         <spacer height="1f" width="20"/>
+     </div>
+diff --git a/data/gui/dialogs/online/registration_terms.stkgui b/data/gui/dialogs/online/registration_terms.stkgui
+index 4619994a8..49d3be662 100644
+--- a/data/gui/dialogs/online/registration_terms.stkgui
++++ b/data/gui/dialogs/online/registration_terms.stkgui
+@@ -23,10 +23,10 @@
+         <spacer height="2%" width="50"/>
+ 
+         <buttonbar id="options" width="45%" height="14%" align="center">
+-            <icon-button id="cancel" width="64" height="64" icon="gui/icons/red_x.png"
+-                I18N="In the registration dialog" text="Cancel" label_location="bottom"/>
+             <icon-button id="accept" width="64" height="64" icon="gui/icons/green_check.png"
+                 I18N="In the registration dialog" text="Accept" label_location="bottom"/>
++            <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                I18N="In the registration dialog" text="Cancel" label_location="bottom"/>
+         </buttonbar>
+         <spacer height="1f" width="5"/>
+     </div>
+diff --git a/data/gui/dialogs/online/server_configuration_dialog.stkgui b/data/gui/dialogs/online/server_configuration_dialog.stkgui
+index 95d5145e1..8966469ac 100644
+--- a/data/gui/dialogs/online/server_configuration_dialog.stkgui
++++ b/data/gui/dialogs/online/server_configuration_dialog.stkgui
+@@ -41,10 +41,10 @@
+             <spacer height="1%" width="20"/>
+ 
+             <buttonbar id="options" x="0" y="0" width="40%" height="18%" align="center">
+-                <icon-button id="cancel" width="64" height="64" icon="gui/icons/red_x.png"
+-                             I18N="In the server configuration screen" text="Cancel" label_location="bottom"/>
+                 <icon-button id="ok" width="64" height="64" icon="gui/icons/green_check.png"
+                              I18N="In the server configuration screen" text="OK" label_location="bottom"/>
++                <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                             I18N="In the server configuration screen" text="Cancel" label_location="bottom"/>
+             </buttonbar>
+ 
+             <spacer height="1f" width="20"/>
+diff --git a/data/gui/dialogs/online/server_info_dialog.stkgui b/data/gui/dialogs/online/server_info_dialog.stkgui
+index 9aaf42e9c..045f97e84 100644
+--- a/data/gui/dialogs/online/server_info_dialog.stkgui
++++ b/data/gui/dialogs/online/server_info_dialog.stkgui
+@@ -27,12 +27,12 @@
+         </div>
+         <spacer height="1%" width="5"/>
+         <buttonbar id="options" width="90%" proportion="4" align="center">
+-                <icon-button id="cancel" width="128" height="128" icon="gui/icons/back.png"
+-                             I18N="In the server info dialog" text="Back" label_location="bottom"/>
+-                <icon-button id="bookmark" width="128" height="128" icon="gui/icons/story_mode_book.png"
+-                             I18N="In the server info dialog"  text="Bookmark this server" label_location="bottom"/>
+                 <icon-button id="join" width="128" height="128" icon="gui/icons/green_check.png"
+                              I18N="In the server info dialog"  text="Join" label_location="bottom"/>
++                <icon-button id="bookmark" width="128" height="128" icon="gui/icons/story_mode_book.png"
++                             I18N="In the server info dialog"  text="Bookmark this server" label_location="bottom"/>
++                <icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
++                             I18N="In the server info dialog" text="Cancel" label_location="bottom"/>
+         </buttonbar>
+         <spacer height="1f" width="5"/>
+     </div>
+diff --git a/data/gui/dialogs/online/splitscreen_player_dialog.stkgui b/data/gui/dialogs/online/splitscreen_player_dialog.stkgui
+index f6fc1388b..2d503c68f 100644
+--- a/data/gui/dialogs/online/splitscreen_player_dialog.stkgui
++++ b/data/gui/dialogs/online/splitscreen_player_dialog.stkgui
+@@ -44,14 +44,14 @@
+         <spacer proportion="3" width="10"/>
+ 
+         <buttonbar id="options" width="90%" height="20%" align="center">
+-            <icon-button id="cancel" width="64" height="64" icon="gui/icons/red_x.png"
+-                         I18N="Splitscreen player in network" text="Cancel" label_location="bottom"/>
+-            <icon-button id="reset" width="64" height="64" icon="gui/icons/remove.png"
+-                         I18N="Splitscreen player in network" text="Clear players" label_location="bottom"/>
+             <icon-button id="add" width="64" height="64" icon="gui/icons/blue_plus.png"
+                          I18N="Splitscreen player in network"  text="Add player" label_location="bottom"/>
+             <icon-button id="connect" width="64" height="64" icon="gui/icons/green_check.png"
+                          I18N="Splitscreen player in network" text="All players ready" label_location="bottom"/>
++            <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                         I18N="Splitscreen player in network" text="Cancel" label_location="bottom"/>
++            <icon-button id="reset" width="64" height="64" icon="gui/icons/remove.png"
++                         I18N="Splitscreen player in network" text="Clear players" label_location="bottom"/>
+         </buttonbar>
+ 
+         <spacer height="1f" width="10"/>
+diff --git a/data/gui/dialogs/online/user_info_dialog.stkgui b/data/gui/dialogs/online/user_info_dialog.stkgui
+index 0d35eba53..1f6c2c23d 100644
+--- a/data/gui/dialogs/online/user_info_dialog.stkgui
++++ b/data/gui/dialogs/online/user_info_dialog.stkgui
+@@ -19,18 +19,18 @@
+         <spacer height="3%" width="50"/>
+ 
+         <buttonbar id="options" width="90%" height="20%" align="center">
+-            <icon-button id="cancel" width="64" height="64" icon="gui/icons/back.png"
+-                         I18N="User info dialog" text="Close" label_location="bottom"/>
+-            <icon-button id="remove" width="64" height="64" icon="gui/icons/remove.png"
+-                         I18N="User info dialog"  text="Remove Friend" label_location="bottom"/>
+-            <icon-button id="friend" width="64" height="64" icon="gui/icons/player_add.png"
++            <icon-button id="remove" width="64" height="64" icon="gui/icons/package-uninstall.png"
++                         I18N="User info dialog"  text="Remove" label_location="bottom"/>
++            <icon-button id="friend" width="64" height="64" icon="gui/icons/blue_plus.png"
+                          I18N="User info dialog"  text="Add Friend" label_location="bottom"/>
+             <icon-button id="accept" width="64" height="64" icon="gui/icons/green_check.png"
+-                         I18N="User info dialog"  text="Accept Invite" label_location="bottom"/>
+-            <icon-button id="decline" width="64" height="64" icon="gui/icons/red_x.png"
+-                         I18N="User info dialog"  text="Decline Invite" label_location="bottom"/>
+-            <icon-button id="enter" width="64" height="64" icon="gui/icons/player_view.png"
+-                         I18N="User info dialog"  text="View Profile" label_location="bottom"/>
++                         I18N="User info dialog"  text="Accept" label_location="bottom"/>
++            <icon-button id="decline" width="64" height="64" icon="gui/icons/red_mark.png"
++                         I18N="User info dialog"  text="Decline" label_location="bottom"/>
++            <icon-button id="enter" width="64" height="64" icon="gui/icons/difficulty_medium.png"
++                         I18N="User info dialog"  text="View" label_location="bottom"/>
++            <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                         I18N="User info dialog" text="Close" label_location="bottom"/>
+         </buttonbar>
+         <spacer height="1f" width="20"/>
+     </div>
+diff --git a/data/gui/dialogs/online/vote_dialog.stkgui b/data/gui/dialogs/online/vote_dialog.stkgui
+index b4e6cd9bd..60f27eea1 100644
+--- a/data/gui/dialogs/online/vote_dialog.stkgui
++++ b/data/gui/dialogs/online/vote_dialog.stkgui
+@@ -15,8 +15,8 @@
+         <spacer height="8%" width="50"/>
+ 
+         <buttonbar id="options" width="25%" height="20%" align="center">
+-            <icon-button id="cancel" width="64" height="64" icon="gui/icons/green_check.png"
+-                I18N="Vote dialog" text="OK" label_location="none"/>
++            <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                I18N="Vote dialog" text="Close" label_location="none"/>
+         </buttonbar>
+         <spacer height="1f" width="10"/>
+     </div>
+diff --git a/data/gui/dialogs/overworld_dialog.stkgui b/data/gui/dialogs/overworld_dialog.stkgui
+index 9722304a1..224ab2673 100644
+--- a/data/gui/dialogs/overworld_dialog.stkgui
++++ b/data/gui/dialogs/overworld_dialog.stkgui
+@@ -16,9 +16,6 @@
+ 
+         <buttonbar id="choiceribbon" proportion="4" width="100%" align="center">
+ 
+-            <icon-button id="exit" width="128" height="128" icon="gui/icons/main_quit.png"
+-                         I18N="In the in-game dialog" text="Back to menu" word_wrap="true"/>
+-
+             <icon-button id="selectkart" width="128" height="128" icon="gui/icons/random_kart.png"
+                     I18N="In the in-game dialog" text="Select kart" word_wrap="true"/>
+ 
+@@ -28,6 +25,9 @@
+             <icon-button id="help" width="128" height="128" icon="gui/icons/main_help.png"
+                     I18N="In the in-game dialog" text="Help" word_wrap="true"/>
+ 
++            <icon-button id="exit" width="128" height="128" icon="gui/icons/main_quit.png"
++                         I18N="In the in-game dialog" text="Back to menu" word_wrap="true"/>
++
+         </buttonbar>
+ 
+         <spacer width="20" height="35" />
+diff --git a/data/gui/dialogs/press_a_key_dialog.stkgui b/data/gui/dialogs/press_a_key_dialog.stkgui
+index ec7c0349e..1c1d53cc9 100644
+--- a/data/gui/dialogs/press_a_key_dialog.stkgui
++++ b/data/gui/dialogs/press_a_key_dialog.stkgui
+@@ -8,13 +8,13 @@
+ 
+         <spacer proportion="1" />
+ 
+-        <buttonbar id="buttons" height="35%" width="100%" align="center">
+-            <icon-button id="cancel" width="128" height="128" icon="gui/icons/back.png"
+-                I18N="When configuring input" text="Cancel" align="center"/>
+-            <icon-button id="assignEsc" width="128" height="128" icon="gui/icons/keyboard.png"
++        <buttonbar id="buttons" height="45%" width="100%" align="center">
++            <icon-button id="assignEsc" width="128" height="128" icon="gui/icons/back.png"
+                 I18N="When configuring input" text="Assign to ESC key" align="center"/>
+             <icon-button id="assignNone" width="128" height="128" icon="gui/icons/remove.png"
+                 I18N="When configuring input" text="Assign nothing" align="center"/>
++            <icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
++                I18N="When configuring input" text="Cancel" align="center"/>
+         </buttonbar>
+     </div>
+ </stkgui>
+diff --git a/data/gui/dialogs/race_paused_dialog.stkgui b/data/gui/dialogs/race_paused_dialog.stkgui
+index 028d047f2..16a1919a5 100644
+--- a/data/gui/dialogs/race_paused_dialog.stkgui
++++ b/data/gui/dialogs/race_paused_dialog.stkgui
+@@ -16,9 +16,6 @@
+ 
+         <buttonbar id="choiceribbon" proportion="4" width="100%" align="center">
+ 
+-            <icon-button id="exit" width="128" height="128" icon="gui/icons/main_quit.png"
+-                         I18N="Race paused button" raw_text="Text" word_wrap="true"/>
+-
+             <icon-button id="newrace" width="128" height="128" icon="gui/icons/main_race.png"
+                     I18N="Race paused button" raw_text="Text" word_wrap="true"/>
+ 
+@@ -34,6 +31,9 @@
+             <icon-button id="help" width="128" height="128" icon="gui/icons/main_help.png"
+                     I18N="Race paused button" text="Help" word_wrap="true"/>
+ 
++            <icon-button id="exit" width="128" height="128" icon="gui/icons/main_quit.png"
++                         I18N="Race paused button" raw_text="Text" word_wrap="true"/>
++
+         </buttonbar>
+ 
+         <spacer width="20" height="5%" />
+diff --git a/data/gui/dialogs/select_challenge.stkgui b/data/gui/dialogs/select_challenge.stkgui
+index 2db2228d3..540fc9e5d 100644
+--- a/data/gui/dialogs/select_challenge.stkgui
++++ b/data/gui/dialogs/select_challenge.stkgui
+@@ -24,10 +24,10 @@
+         <spacer height="3%" width="1"/>
+ 
+         <buttonbar id="actions" height="20%" width="30%" align="center">
+-            <icon-button id="back" icon="gui/icons/back.png"
+-                    width="128" height="128" text="Back"/>
+             <icon-button id="start" icon="gui/icons/green_check.png"
+                     width="128" height="128" text="Start Race"/>
++            <icon-button id="back" icon="gui/icons/back.png"
++                    width="128" height="128" text="Back"/> 
+         </buttonbar>
+ 
+     </div>
+diff --git a/data/gui/icons/dropdown.png b/data/gui/icons/dropdown.png
+new file mode 100644
+index 000000000..7ea9737b6
+Binary files /dev/null and b/data/gui/icons/dropdown.png differ
+diff --git a/data/gui/icons/main_network_add.png b/data/gui/icons/main_network_add.png
+deleted file mode 100644
+index c59cf2ccf..000000000
+Binary files a/data/gui/icons/main_network_add.png and /dev/null differ
+diff --git a/data/gui/icons/main_race_multi.png b/data/gui/icons/main_race_multi.png
+new file mode 100644
+index 000000000..1c982604d
+Binary files /dev/null and b/data/gui/icons/main_race_multi.png differ
+diff --git a/data/gui/icons/mode_laptrial.png b/data/gui/icons/mode_laptrial.png
+deleted file mode 100644
+index 129152890..000000000
+Binary files a/data/gui/icons/mode_laptrial.png and /dev/null differ
+diff --git a/data/gui/icons/online/menu_online_player.png b/data/gui/icons/online/menu_online_player.png
+deleted file mode 100644
+index ad45bd9a4..000000000
+Binary files a/data/gui/icons/online/menu_online_player.png and /dev/null differ
+diff --git a/data/gui/icons/online/menu_online_player_focus.png b/data/gui/icons/online/menu_online_player_focus.png
+deleted file mode 100644
+index c4a468fc6..000000000
+Binary files a/data/gui/icons/online/menu_online_player_focus.png and /dev/null differ
+diff --git a/data/gui/icons/player.png b/data/gui/icons/player.png
+deleted file mode 100644
+index f6f640191..000000000
+Binary files a/data/gui/icons/player.png and /dev/null differ
+diff --git a/data/gui/icons/player_add.png b/data/gui/icons/player_add.png
+deleted file mode 100644
+index d468ce37a..000000000
+Binary files a/data/gui/icons/player_add.png and /dev/null differ
+diff --git a/data/gui/icons/player_view.png b/data/gui/icons/player_view.png
+deleted file mode 100644
+index 7c012e76c..000000000
+Binary files a/data/gui/icons/player_view.png and /dev/null differ
+diff --git a/data/gui/icons/red_x.png b/data/gui/icons/red_x.png
+deleted file mode 100644
+index 57f5e19cf..000000000
+Binary files a/data/gui/icons/red_x.png and /dev/null differ
+diff --git a/data/gui/screens/cutscene.stkgui b/data/gui/screens/cutscene.stkgui
+index 7b26f6f5f..e93fe6dc4 100644
+--- a/data/gui/screens/cutscene.stkgui
++++ b/data/gui/screens/cutscene.stkgui
+@@ -2,6 +2,6 @@
+ <stkgui>
+     <div x="2%" y="2%" width="96%" height="96%" layout="vertical-row">
+         <spacer width="10" proportion="1"/>
+-        <button id="continue" align="right" height="fit" width="8f" text="Skip"/>
++        <button id="continue" x="20" align="left" text="Continue"/>
+     </div>
+ </stkgui>
+diff --git a/data/gui/screens/gp_info.stkgui b/data/gui/screens/gp_info.stkgui
+index 46584d4db..8aa8ec235 100644
+--- a/data/gui/screens/gp_info.stkgui
++++ b/data/gui/screens/gp_info.stkgui
+@@ -71,11 +71,11 @@
+ 
+         <spacer width="1" height="1%"/>
+         <buttonbar id="buttons" height="17%" width="100%" align="center">
+-            <icon-button id="continue" width="64" height="64" icon="gui/icons/green_check.png"
+-                    I18N="In the grand prix info screen" text="Continue saved GP"/>
+-
+             <icon-button id="start" width="64" height="64" icon="gui/icons/green_check.png"
+                     I18N="In the grand prix info screen" text="Start Race"/>
++
++            <icon-button id="continue" width="64" height="64" icon="gui/icons/green_check.png"
++                    I18N="In the grand prix info screen" text="Continue saved GP"/>
+         </buttonbar>
+ 
+     </div>
+diff --git a/data/gui/screens/help/help2.stkgui b/data/gui/screens/help/help2.stkgui
+index 60839fdb4..6f42f493b 100644
+--- a/data/gui/screens/help/help2.stkgui
++++ b/data/gui/screens/help/help2.stkgui
+@@ -88,7 +88,7 @@
+                 </div>
+                 
+                 <div width="100%" proportion="2" layout="horizontal-row">
+-                    <icon align="center" width="8%" height="100%" icon="gui/icons/mode_laptrial.png"/>
++                    <icon align="center" width="8%" height="100%" icon="gui/icons/mode_normal.png"/>
+                     <spacer width="3%" height="100%"/>
+                     <bubble proportion="1" height="100%"
+                             I18N="In the help menu"
+diff --git a/data/gui/screens/high_score_selection.stkgui b/data/gui/screens/high_score_selection.stkgui
+index b9d86e630..37a516abd 100644
+--- a/data/gui/screens/high_score_selection.stkgui
++++ b/data/gui/screens/high_score_selection.stkgui
+@@ -22,7 +22,7 @@
+                          I18N="In the high score selection screen" text="Time Trial"/>
+             <icon-button id="tab_egg_hunt" width="128" height="128" icon="gui/icons/mode_easter.png"
+                          I18N="In the high score selection screen" text="Egg Hunt"/>
+-            <icon-button id="tab_lap_trial" width="128" height="128" icon="gui/icons/mode_laptrial.png"
++            <icon-button id="tab_lap_trial" width="128" height="128" icon="gui/icons/mode_normal.png"
+                          I18N="In the high score selection screen" text="Lap Trial"/>
+             <icon-button id="tab_grand_prix" width="128" height="128" icon="gui/icons/gp_new.png"
+                          I18N="In the high score selection screen" text="Grand Prix"/>
+diff --git a/data/gui/screens/online/create_server.stkgui b/data/gui/screens/online/create_server.stkgui
+index 1b6245bb6..e1a3d6498 100644
+--- a/data/gui/screens/online/create_server.stkgui
++++ b/data/gui/screens/online/create_server.stkgui
+@@ -1,6 +1,5 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <stkgui>
+-    <icon-button id="back" x="1%" y="0" height="9%" icon="gui/icons/back.png"/>
+     <div x="0" y="1%" width="100%" height="99%" layout="vertical-row" >
+         <header id="title" text_align="center" height="8%" width="80%" align="center" I18N="In the server creation screen" text="Server Creation"/>
+         <spacer width="100%" height="1%"/>
+@@ -70,10 +69,10 @@
+             <label id="info" proportion="1" width="100%" align="center" text_align="center" word_wrap="true" text=""/>
+ 
+             <buttonbar id="options" x="0" y="0" width="40%" height="15%" align="center">
+-                <icon-button id="cancel" width="64" height="64" icon="gui/icons/back.png"
+-                             I18N="In the server creation screen" text="Cancel" label_location="bottom"/>
+                 <icon-button id="create" width="64" height="64" icon="gui/icons/green_check.png"
+                              I18N="In the server creation screen" text="Create" label_location="bottom"/>
++                <icon-button id="cancel" width="64" height="64" icon="gui/icons/main_quit.png"
++                             I18N="In the server creation screen" text="Cancel" label_location="bottom"/>
+             </buttonbar>
+             
+             <spacer width="10" height="1f"/>
+diff --git a/data/gui/screens/online/lan.stkgui b/data/gui/screens/online/lan.stkgui
+index 634bada6d..97ec1f700 100644
+--- a/data/gui/screens/online/lan.stkgui
++++ b/data/gui/screens/online/lan.stkgui
+@@ -17,6 +17,11 @@
+             <icon-button id="create_lan_server" width="128" height="128"
+                          icon="gui/icons/online/menu_create_server.png" focus_icon="gui/icons/online/menu_create_server_hover.png"
+                          I18N="In the online multiplayer screen" text="Create Server"/>
++                         <!--
++            <icon-button id="manage_user" width="128" height="128"
++                         icon="gui/icons/options_players.png"
++                         I18N="In the online multiplayer screen" text="Users"/>
++                         -->
+         </buttonbar>
+ 
+         <spacer height="5%" width="10"/>
+diff --git a/data/gui/screens/online/networking_lobby.stkgui b/data/gui/screens/online/networking_lobby.stkgui
+index 1839e906f..418b24d3e 100644
+--- a/data/gui/screens/online/networking_lobby.stkgui
++++ b/data/gui/screens/online/networking_lobby.stkgui
+@@ -31,10 +31,10 @@
+             <div proportion="1" height="100%" layout="vertical-row">
+                 <spacer height="20%" width="10"/>
+                 <div width="100%" proportion="1" layout="horizontal-row">
+-                    <icon-button id="config" proportion="1" height="60%" icon="gui/icons/main_options.png" align="top"
+-                        I18N="In the network lobby" text="Configuration"/>
+                     <icon-button id="start" proportion="1" height="60%" icon="gui/icons/green_check.png" align="top"
+                         I18N="In the network lobby" text="Start race"/>
++                    <icon-button id="config" proportion="1" height="60%" icon="gui/icons/main_options.png" align="top"
++                        I18N="In the network lobby" text="Configuration"/>
+                 </div>
+             </div>
+         </div>
+diff --git a/data/gui/screens/online/online.stkgui b/data/gui/screens/online/online.stkgui
+index cc80df1a0..aba444554 100644
+--- a/data/gui/screens/online/online.stkgui
++++ b/data/gui/screens/online/online.stkgui
+@@ -36,7 +36,7 @@
+                          icon="gui/icons/online/menu_quick_play.png" focus_icon="gui/icons/online/menu_quick_play_hover.png"
+                          I18N="Networking menu button" text="Enter server address" word_wrap="true"/>
+             <icon-button id="online" width="128" height="128"
+-                         icon="gui/icons/online/menu_online_player.png" focus_icon="gui/icons/online/menu_online_player_focus.png"
++                         icon="gui/icons/menu_online.png" focus_icon="gui/icons/menu_online_focus.png"
+                          I18N="Networking menu button" text="Your profile" word_wrap="true"/>
+         </buttonbar>
+ 
+diff --git a/data/gui/screens/online/profile_achievements_tab.stkgui b/data/gui/screens/online/profile_achievements_tab.stkgui
+index 3b10e16b9..d19632137 100644
+--- a/data/gui/screens/online/profile_achievements_tab.stkgui
++++ b/data/gui/screens/online/profile_achievements_tab.stkgui
+@@ -11,7 +11,7 @@
+         <tabs id="profile_tabs" height="2f" x="2%" width="98%" align="center">
+             <icon-button id="tab_achievements" width="128" height="128" icon="gui/icons/gp_copy.png"
+                 I18N="Section in the profile screen" text="Achievements"/>
+-            <icon-button id="tab_friends" width="128" height="128" icon="gui/icons/player.png"/>
++            <icon-button id="tab_friends" width="128" height="128" icon="gui/icons/options_players.png"/>
+             <icon-button id="tab_settings" width="128" height="128" icon="gui/icons/main_options.png"/>
+         </tabs>
+ 
+diff --git a/data/gui/screens/online/profile_friends.stkgui b/data/gui/screens/online/profile_friends.stkgui
+index 14fab3df4..aca9b1ea1 100644
+--- a/data/gui/screens/online/profile_friends.stkgui
++++ b/data/gui/screens/online/profile_friends.stkgui
+@@ -10,7 +10,7 @@
+ 
+         <tabs id="profile_tabs" height="2f" x="2%" width="98%" align="center">
+             <icon-button id="tab_achievements" width="128" height="128" icon="gui/icons/gp_copy.png"/>
+-            <icon-button id="tab_friends" width="128" height="128" icon="gui/icons/player.png"
++            <icon-button id="tab_friends" width="128" height="128" icon="gui/icons/options_players.png"
+                 I18N="Section in the profile screen" text="Friends"/>
+             <icon-button id="tab_settings" width="128" height="128" icon="gui/icons/main_options.png"/>
+         </tabs>
+diff --git a/data/gui/screens/online/profile_settings.stkgui b/data/gui/screens/online/profile_settings.stkgui
+index 1ade93cbf..8970092e5 100644
+--- a/data/gui/screens/online/profile_settings.stkgui
++++ b/data/gui/screens/online/profile_settings.stkgui
+@@ -10,7 +10,7 @@
+ 
+         <tabs id="profile_tabs" height="2f" x="2%" width="98%" align="center">
+             <icon-button id="tab_achievements" width="128" height="128" icon="gui/icons/gp_copy.png"/>
+-            <icon-button id="tab_friends" width="128" height="128" icon="gui/icons/player.png" />
++            <icon-button id="tab_friends" width="128" height="128" icon="gui/icons/options_players.png" />
+             <icon-button id="tab_settings" width="128" height="128" icon="gui/icons/main_options.png"
+                 I18N="Section in the profile screen" text="Account Settings"/>
+         </tabs>
+diff --git a/data/gui/screens/online/register.stkgui b/data/gui/screens/online/register.stkgui
+index dda41b1c5..6f6a2aece 100644
+--- a/data/gui/screens/online/register.stkgui
++++ b/data/gui/screens/online/register.stkgui
+@@ -6,11 +6,11 @@
+         <spacer height="1%" width="10"/>
+ 
+       <tabs id="mode_tabs" height="2f" x="2%" width="98%" align="center">
+-        <icon-button id="tab_new_online" width="128" height="128" icon="gui/icons/main_network_add.png"
++        <icon-button id="tab_new_online" width="128" height="128" icon="gui/icons/main_network.png"
+                      I18N="Section in the register screen" text="New Online Account"/>
+         <icon-button id="tab_existing_online" width="128" height="128" icon="gui/icons/main_network.png"
+                      I18N="Section in the register screen" text="Existing Online Account"/>
+-        <icon-button id="tab_offline" width="128" height="128" icon="gui/icons/player_add.png"
++        <icon-button id="tab_offline" width="128" height="128" icon="gui/icons/options_players.png"
+                      I18N="Section in the register screen" text="Offline Account"/>
+       </tabs>
+ 
+@@ -57,14 +57,14 @@
+ 
+                 <label id="info" height="20%" width="100%" align="center" text_align="center" word_wrap="true"
+                    I18N="In the registration dialog" 
+-                       text="You can play without creating an online account by selecting an offline account. Though then you can not connect to friends, vote for addons etc. Please read our privacy statement at https://privacy.supertuxkart.net"/>
++                       text="You can play without creating an online account by selecting an offline account. Though then you can not connect to friends, vote for addons etc. Please read our privacy statement at http://privacy.supertuxkart.net"/>
+             </div>
+ 
+             <buttonbar id="options" width="40%" height="15%" align="center">
+-                <icon-button id="cancel" width="50%" height="90%" icon="gui/icons/red_x.png"
+-                    I18N="In the registration dialog"  text="Cancel" label_location="none"/>
+                 <icon-button id="next" width="50%" height="90%" icon="gui/icons/green_check.png"
+                     I18N="In the registration dialog" text="OK" label_location="none"/>
++                <icon-button id="cancel" width="50%" height="90%" icon="gui/icons/main_quit.png"
++                    I18N="In the registration dialog"  text="Cancel" label_location="none"/>
+             </buttonbar>
+         </box>
+     </div>
+diff --git a/data/gui/screens/options/user_screen_tab.stkgui b/data/gui/screens/options/user_screen_tab.stkgui
+index b44369375..a826d78f4 100644
+--- a/data/gui/screens/options/user_screen_tab.stkgui
++++ b/data/gui/screens/options/user_screen_tab.stkgui
+@@ -81,6 +81,8 @@
+ 
+                 <div width="100%" align="center" layout="vertical-row" height="13%">
+                     <buttonbar id="options" width="100%" height="100%" align="center">
++                        <icon-button id="ok" width="128" height="128" icon="gui/icons/green_check.png"
++                                     I18N="In the user screen" text="OK" label_location="bottom"/>
+                         <icon-button id="new_user" width="128" height="128" icon="gui/icons/blue_plus.png"
+                                      I18N="In the user screen" text="Add" label_location="bottom"/>
+                         <icon-button id="delete" width="128" height="128" icon="gui/icons/remove.png"
+@@ -89,10 +91,8 @@
+                                      I18N="In the user screen" text="Rename" label_location="bottom"/>
+                         <icon-button id="default_kart_color" width="128" height="128" icon="gui/icons/edit.png"
+                                      I18N="In the user screen" text="Kart color" label_location="bottom"/>
+-                        <icon-button id="cancel" width="128" height="128" icon="gui/icons/back.png"
++                        <icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
+                                      I18N="In the user screen" text="Cancel" label_location="bottom"/>
+-                        <icon-button id="ok" width="128" height="128" icon="gui/icons/green_check.png"
+-                                     I18N="In the user screen" text="OK" label_location="bottom"/>
+                     </buttonbar>
+                 </div>
+                 <spacer width="20" height="5%"/>
+diff --git a/data/gui/screens/race_result.stkgui b/data/gui/screens/race_result.stkgui
+index e9005ac3b..0e9f21b05 100644
+--- a/data/gui/screens/race_result.stkgui
++++ b/data/gui/screens/race_result.stkgui
+@@ -9,10 +9,10 @@
+                 <spacer height="2%" width="100%"/>
+                     <!-- The actual button texts will vary depending on what type of race
+                          was being run, and if something was unlocked etc. So we don't
+-                         specify a text here, and label the buttons:
+-                         right: 'Continue', 'Setup new race' (or invisible)
+-                         middle: 'Restart', 'Continue' (or invisible)
+-                         left: 'Abort GP', 'Back to the menu' (or invisible)
++                         specify a text here, and label the buttons :
++                         top   : 'See unlocked feature(s)', 'Continue', 'Setup new race'
++                         middle: 'Restart' (or invisible)
++                         bottom: 'Abort GP', 'Back to the menu' (or invisible)
+                          Setting text=" " is important, otherwise the height of the
+                          widget is incorrect.                             -->
+                 <buttonbar id="operations" width="65%" height="18%" align="center">
+diff --git a/data/gui/screens/user_screen.stkgui b/data/gui/screens/user_screen.stkgui
+index d83a1a303..9a80753c7 100644
+--- a/data/gui/screens/user_screen.stkgui
++++ b/data/gui/screens/user_screen.stkgui
+@@ -57,6 +57,8 @@
+ 			
+ 			<div width="90%" align="center" layout="vertical-row" height="13%">
+ 				<buttonbar id="options" width="100%" height="100%" align="center">
++					<icon-button id="ok" width="128" height="128" icon="gui/icons/green_check.png"
++								 I18N="In the user screen" text="OK" label_location="bottom"/>
+ 					<icon-button id="new_user" width="128" height="128" icon="gui/icons/blue_plus.png"
+ 								 I18N="In the user screen" text="Add" label_location="bottom"/>
+ 					<icon-button id="delete" width="128" height="128" icon="gui/icons/remove.png"
+@@ -65,10 +67,8 @@
+ 								 I18N="In the user screen" text="Rename" label_location="bottom"/>
+ 					<icon-button id="default_kart_color" width="128" height="128" icon="gui/icons/edit.png"
+ 								 I18N="In the user screen" text="Kart color" label_location="bottom"/>
+-					<icon-button id="cancel" width="128" height="128" icon="gui/icons/back.png"
++					<icon-button id="cancel" width="128" height="128" icon="gui/icons/main_quit.png"
+ 								 I18N="In the user screen" text="Cancel" label_location="bottom"/>
+-					<icon-button id="ok" width="128" height="128" icon="gui/icons/green_check.png"
+-								 I18N="In the user screen" text="OK" label_location="bottom"/>
+ 				</buttonbar>
+ 			</div>
+ 			<spacer width="20" height="5%"/>
+diff --git a/data/skins/cartoon/data/gui/icons/main_network.png b/data/skins/cartoon/data/gui/icons/main_network.png
+index 23409a6e4..8d8119118 100644
+Binary files a/data/skins/cartoon/data/gui/icons/main_network.png and b/data/skins/cartoon/data/gui/icons/main_network.png differ
+diff --git a/data/skins/cartoon/data/gui/icons/main_network_add.png b/data/skins/cartoon/data/gui/icons/main_network_add.png
+deleted file mode 100644
+index 398d1ce4d..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/main_network_add.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/main_race_multi.png b/data/skins/cartoon/data/gui/icons/main_race_multi.png
+new file mode 100644
+index 000000000..f813fe420
+Binary files /dev/null and b/data/skins/cartoon/data/gui/icons/main_race_multi.png differ
+diff --git a/data/skins/cartoon/data/gui/icons/mode_laptrial.png b/data/skins/cartoon/data/gui/icons/mode_laptrial.png
+deleted file mode 100644
+index 1d5cf88f5..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/mode_laptrial.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/online/menu_online_player.png b/data/skins/cartoon/data/gui/icons/online/menu_online_player.png
+deleted file mode 100644
+index 892973de5..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/online/menu_online_player.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/online/menu_online_player_focus.png b/data/skins/cartoon/data/gui/icons/online/menu_online_player_focus.png
+deleted file mode 100644
+index e88ae5895..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/online/menu_online_player_focus.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/player.png b/data/skins/cartoon/data/gui/icons/player.png
+deleted file mode 100644
+index c9b15e58f..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/player.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/player_add.png b/data/skins/cartoon/data/gui/icons/player_add.png
+deleted file mode 100644
+index 6ceb08bb4..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/player_add.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/player_view.png b/data/skins/cartoon/data/gui/icons/player_view.png
+deleted file mode 100644
+index 58a47ee8a..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/player_view.png and /dev/null differ
+diff --git a/data/skins/cartoon/data/gui/icons/red_x.png b/data/skins/cartoon/data/gui/icons/red_x.png
+deleted file mode 100644
+index 740814cc1..000000000
+Binary files a/data/skins/cartoon/data/gui/icons/red_x.png and /dev/null differ
+diff --git a/src/karts/kart.cpp b/src/karts/kart.cpp
+index 1efa7fe2e..1a0cd0e8e 100644
+--- a/src/karts/kart.cpp
++++ b/src/karts/kart.cpp
+@@ -377,7 +377,9 @@ void Kart::reset()
+     m_invulnerable_ticks   = 0;
+     m_min_nitro_ticks      = 0;
+     m_energy_to_min_ratio  = 0;
+-    m_collected_energy     = 0;
++    // HEHE
++    //m_collected_energy     = 0;
++    m_collected_energy     = 1000.0F;
+     m_bounce_back_ticks    = 0;
+     m_brake_ticks          = 0;
+     m_ticks_last_crash     = 0;
+@@ -1178,8 +1180,10 @@ void Kart::collectedItem(ItemState *item_state)
+     default        : break;
+     }   // switch TYPE
+ 
+-    if ( m_collected_energy > m_kart_properties->getNitroMax())
+-        m_collected_energy = m_kart_properties->getNitroMax();
++    if (m_collected_energy > m_kart_properties->getNitroMax())
++        // HEHE
++        //m_collected_energy = m_kart_properties->getNitroMax();
++        m_collected_energy = 1000.0F;
+     m_controller->collectedItem(*item_state, old_energy);
+ 
+ }   // collectedItem
+@@ -2270,7 +2274,8 @@ void Kart::updateNitro(int ticks)
+     }
+ 
+ 
+-    m_collected_energy -= m_consumption_per_tick*ticks;
++    // HEHE
++    // m_collected_energy -= m_consumption_per_tick*ticks;
+     if (m_collected_energy < 0)
+     {
+         if(m_nitro_sound->getStatus() == SFXBase::SFX_PLAYING && !rewinding)
+diff --git a/src/karts/kart_properties.cpp b/src/karts/kart_properties.cpp
+index 5852abf89..0c88a5e3d 100644
+--- a/src/karts/kart_properties.cpp
++++ b/src/karts/kart_properties.cpp
+@@ -1186,7 +1186,10 @@ float KartProperties::getNitroBigContainer() const
+ // ----------------------------------------------------------------------------
+ float KartProperties::getNitroMaxSpeedIncrease() const
+ {
+-    return m_cached_characteristic->getNitroMaxSpeedIncrease();
++    // HEHE
++    //return m_cached_characteristic->getNitroMaxSpeedIncrease();
++    //return m_cached_characteristic->getNitroMaxSpeedIncrease() + 25.0F;
++    return m_cached_characteristic->getNitroMaxSpeedIncrease() + 50.0F;
+ }  // getNitroMaxSpeedIncrease
+ 
+ // ----------------------------------------------------------------------------
+@@ -1199,6 +1202,8 @@ float KartProperties::getNitroFadeOutTime() const
+ float KartProperties::getNitroMax() const
+ {
+     return m_cached_characteristic->getNitroMax();
++    // HEHE
++    // return 10.0F;
+ }  // getNitroMax
+ 
+ // ----------------------------------------------------------------------------
+diff --git a/src/race/race_manager.hpp b/src/race/race_manager.hpp
+index 188701380..a1d6b3b10 100644
+--- a/src/race/race_manager.hpp
++++ b/src/race/race_manager.hpp
+@@ -170,7 +170,7 @@ public:
+             case MINOR_MODE_NORMAL_RACE:    return "/gui/icons/mode_normal.png";
+             case MINOR_MODE_TIME_TRIAL:     return "/gui/icons/mode_tt.png";
+             case MINOR_MODE_FOLLOW_LEADER:  return "/gui/icons/mode_ftl.png";
+-            case MINOR_MODE_LAP_TRIAL:      return "/gui/icons/mode_laptrial.png";
++            case MINOR_MODE_LAP_TRIAL:      return "/gui/icons/mode_normal.png"; // TODO: Add lap trial icon
+             case MINOR_MODE_3_STRIKES:      return "/gui/icons/mode_3strikes.png";
+             case MINOR_MODE_FREE_FOR_ALL:   return "/gui/icons/mode_weapons.png";
+             case MINOR_MODE_CAPTURE_THE_FLAG: return "/gui/icons/mode_weapons.png";
+diff --git a/src/states_screens/dialogs/addons_loading.cpp b/src/states_screens/dialogs/addons_loading.cpp
+index 536101875..3c8a5c2e5 100644
+--- a/src/states_screens/dialogs/addons_loading.cpp
++++ b/src/states_screens/dialogs/addons_loading.cpp
+@@ -118,12 +118,12 @@ void AddonsLoading::beforeAddingWidgets()
+ 
+     if (m_addon.isInstalled())
+     {
+-        /* Turn "Install" button into "Update" if allowed to access the internet
+-         * and not in an errored state
++        /* only keep the button as "update" if allowed to access the net
++         * and  not in error state
+          */
+         if (m_addon.needsUpdate() && !addons_manager->wasError()
+             && UserConfigParams::m_internet_status==RequestManager::IPERM_ALLOWED)
+-            getWidget<IconButtonWidget> ("install")->setText( _("Update") );
++            getWidget<IconButtonWidget> ("install")->setLabel( _("Update") );
+         else
+             r->removeChildNamed("install");
+     }
+diff --git a/src/states_screens/dialogs/change_password_dialog.cpp b/src/states_screens/dialogs/change_password_dialog.cpp
+index 3784cf330..1fa32ee50 100644
+--- a/src/states_screens/dialogs/change_password_dialog.cpp
++++ b/src/states_screens/dialogs/change_password_dialog.cpp
+@@ -25,7 +25,6 @@
+ #include "guiengine/widgets/ribbon_widget.hpp"
+ #include "guiengine/widgets/text_box_widget.hpp"
+ #include "online/xml_request.hpp"
+-#include "states_screens/dialogs/message_dialog.hpp"
+ #include "states_screens/state_manager.hpp"
+ #include "utils/string_utils.hpp"
+ #include "utils/translation.hpp"
+@@ -46,7 +45,6 @@ using namespace Online;
+ ChangePasswordDialog::ChangePasswordDialog() : ModalDialog(0.8f, 0.7f)
+ {
+     m_self_destroy = false;
+-    m_show_success_dialog = false;
+     m_success = false;
+ 
+     loadFromFile("online/change_password.stkgui");
+@@ -120,7 +118,7 @@ void ChangePasswordDialog::changePassword(const stringw &current_password,
+     request->addParameter("current", current_password);
+ 
+     // The server code expects two passwords (and verifies again that they
+-    // are identical), so send the password twice.
++    // are identical), so send the passwod twice.
+     request->addParameter("new1", new_password);
+     request->addParameter("new2", new_password);
+     request->queue();
+@@ -212,9 +210,12 @@ bool ChangePasswordDialog::onEscapePressed()
+ // ----------------------------------------------------------------------------
+ void ChangePasswordDialog::success()
+ {
+-    // Close this dialog and show success dialog
+-    m_self_destroy = true;
+-    m_show_success_dialog = true;
++    m_info_widget->setDefaultColor();
++    m_info_widget->setText(_("Password successfully changed."), false);
++    m_options_widget->setActive(true);
++    m_current_password_widget->setText("");
++    m_new_password1_widget->setText("");
++    m_new_password2_widget->setText("");
+ }   // success
+ 
+ // ----------------------------------------------------------------------------
+@@ -245,8 +246,4 @@ void ChangePasswordDialog::onUpdate(float dt)
+     {
+         ModalDialog::dismiss();
+     }
+-    if (m_show_success_dialog)
+-    {
+-        new MessageDialog(_("Password successfully changed."));
+-    }
+ }   // onUpdate
+diff --git a/src/states_screens/dialogs/change_password_dialog.hpp b/src/states_screens/dialogs/change_password_dialog.hpp
+index 7cb13b8f1..e1eaaa14e 100644
+--- a/src/states_screens/dialogs/change_password_dialog.hpp
++++ b/src/states_screens/dialogs/change_password_dialog.hpp
+@@ -56,7 +56,6 @@ public:
+ private:
+ 
+     bool m_self_destroy;
+-    bool m_show_success_dialog;
+     bool m_success;
+ 
+     GUIEngine::TextBoxWidget * m_current_password_widget;
+diff --git a/src/states_screens/dialogs/enter_address_dialog.cpp b/src/states_screens/dialogs/enter_address_dialog.cpp
+index c9f44d5f8..d1677fca7 100644
+--- a/src/states_screens/dialogs/enter_address_dialog.cpp
++++ b/src/states_screens/dialogs/enter_address_dialog.cpp
+@@ -33,7 +33,7 @@
+ 
+ // ------------------------------------------------------------------------
+ EnterAddressDialog::EnterAddressDialog(std::shared_ptr<Server>* entered_server)
+-    : ModalDialog(0.8f, 0.8f, GUIEngine::MODAL_DIALOG_LOCATION_CENTER),
++    : ModalDialog(0.95f, 0.8f, GUIEngine::MODAL_DIALOG_LOCATION_BOTTOM),
+     m_self_destroy(false)
+ {
+     loadFromFile("enter_address_dialog.stkgui");
+diff --git a/src/states_screens/online/create_server_screen.cpp b/src/states_screens/online/create_server_screen.cpp
+index 1e82d5daa..db6b79f25 100644
+--- a/src/states_screens/online/create_server_screen.cpp
++++ b/src/states_screens/online/create_server_screen.cpp
+@@ -88,8 +88,6 @@ void CreateServerScreen::loadedFromFile()
+     assert(m_create_widget != NULL);
+     m_cancel_widget = getWidget<IconButtonWidget>("cancel");
+     assert(m_cancel_widget != NULL);
+-    m_back_widget = getWidget<IconButtonWidget>("back");
+-    assert(m_back_widget != NULL);
+ }   // loadedFromFile
+ 
+ // ----------------------------------------------------------------------------
+@@ -178,11 +176,6 @@ void CreateServerScreen::eventCallback(Widget* widget, const std::string& name,
+             m_game_mode_widget->getSelection(PLAYER_ID_GAME_MASTER);
+         updateMoreOption(selection);
+     }
+-    else if (name == m_back_widget->m_properties[PROP_ID])
+-    {
+-        NetworkConfig::get()->unsetNetworking();
+-        StateManager::get()->escapePressed();
+-    }
+ }   // eventCallback
+ 
+ // ----------------------------------------------------------------------------
+diff --git a/src/states_screens/online/create_server_screen.hpp b/src/states_screens/online/create_server_screen.hpp
+index e396c4597..e1ed21228 100644
+--- a/src/states_screens/online/create_server_screen.hpp
++++ b/src/states_screens/online/create_server_screen.hpp
+@@ -53,7 +53,6 @@ private:
+     GUIEngine::RibbonWidget * m_options_widget;
+     GUIEngine::IconButtonWidget * m_create_widget;
+     GUIEngine::IconButtonWidget * m_cancel_widget;
+-    GUIEngine::IconButtonWidget * m_back_widget;
+ 
+     void createServer();
+     void updateMoreOption(int game_mode);
+diff --git a/src/states_screens/options/options_screen_device.cpp b/src/states_screens/options/options_screen_device.cpp
+index 7f0fbd32c..0546a6782 100644
+--- a/src/states_screens/options/options_screen_device.cpp
++++ b/src/states_screens/options/options_screen_device.cpp
+@@ -551,7 +551,7 @@ void OptionsScreenDevice::eventCallback(Widget* widget,
+ 
+                 binding_to_set = (PlayerAction)n;
+ 
+-                new PressAKeyDialog(0.6f, 0.6f, m_config->isKeyboard());
++                new PressAKeyDialog(0.5f, 0.4f, m_config->isKeyboard());
+ 
+                 if (m_config->isKeyboard())
+                 {
+diff --git a/src/states_screens/options/user_screen.cpp b/src/states_screens/options/user_screen.cpp
+index a260fcb3a..3ee1c9be2 100644
+--- a/src/states_screens/options/user_screen.cpp
++++ b/src/states_screens/options/user_screen.cpp
+@@ -391,7 +391,8 @@ void BaseUserScreen::eventCallback(Widget* widget,
+     }
+     else if (name == "password_reset")
+     {
+-        new RecoveryDialog();
++        // Open password reset page
++        Online::LinkHelper::openURL(stk_config->m_password_reset_url);
+     }
+     else if (name == "options")
+     {
+@@ -415,6 +416,10 @@ void BaseUserScreen::eventCallback(Widget* widget,
+             // EscapePressed will pop this screen.
+             StateManager::get()->escapePressed();
+         }
++        else if (button == "recover")
++        {
++            new RecoveryDialog();
++        }
+         else if (button == "rename")
+         {
+             PlayerProfile *cp = getSelectedPlayer();
+diff --git a/src/states_screens/race_result_gui.cpp b/src/states_screens/race_result_gui.cpp
+index 43d4ec2ba..21a545c90 100644
+--- a/src/states_screens/race_result_gui.cpp
++++ b/src/states_screens/race_result_gui.cpp
+@@ -2406,4 +2406,4 @@ void RaceResultGUI::onResize()
+     Screen::onResize();
+     if (!m_gp_progress_widgets.empty())
+         enableGPProgress();
+-} // onResize
++} // onResize
+\ No newline at end of file

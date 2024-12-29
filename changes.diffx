@@ -1,0 +1,63 @@
+diff --git a/src/karts/kart.cpp b/src/karts/kart.cpp
+index 66a3afb15..5488a14bf 100644
+--- a/src/karts/kart.cpp
++++ b/src/karts/kart.cpp
+@@ -373,7 +373,9 @@ void Kart::reset()
+     m_invulnerable_ticks   = 0;
+     m_min_nitro_ticks      = 0;
+     m_energy_to_min_ratio  = 0;
+-    m_collected_energy     = 0;
++    // HEHE
++    //m_collected_energy     = 0;
++    m_collected_energy     = 1000.0F;
+     m_bounce_back_ticks    = 0;
+     m_brake_ticks          = 0;
+     m_ticks_last_crash     = 0;
+@@ -1169,8 +1171,10 @@ void Kart::collectedItem(ItemState *item_state)
+     default        : break;
+     }   // switch TYPE
+ 
+-    if ( m_collected_energy > m_kart_properties->getNitroMax())
+-        m_collected_energy = m_kart_properties->getNitroMax();
++    if (m_collected_energy > m_kart_properties->getNitroMax())
++        // HEHE
++        //m_collected_energy = m_kart_properties->getNitroMax();
++        m_collected_energy = 1000.0F;
+     m_controller->collectedItem(*item_state, old_energy);
+ 
+ }   // collectedItem
+@@ -2260,7 +2264,8 @@ void Kart::updateNitro(int ticks)
+     }
+ 
+ 
+-    m_collected_energy -= m_consumption_per_tick*ticks;
++    // HEHE
++    // m_collected_energy -= m_consumption_per_tick*ticks;
+     if (m_collected_energy < 0)
+     {
+         if(m_nitro_sound->getStatus() == SFXBase::SFX_PLAYING && !rewinding)
+diff --git a/src/karts/kart_properties.cpp b/src/karts/kart_properties.cpp
+index d7c1a68eb..4dd7aad17 100644
+--- a/src/karts/kart_properties.cpp
++++ b/src/karts/kart_properties.cpp
+@@ -1180,7 +1180,10 @@ float KartProperties::getNitroBigContainer() const
+ // ----------------------------------------------------------------------------
+ float KartProperties::getNitroMaxSpeedIncrease() const
+ {
+-    return m_cached_characteristic->getNitroMaxSpeedIncrease();
++    // HEHE
++    //return m_cached_characteristic->getNitroMaxSpeedIncrease();
++    return m_cached_characteristic->getNitroMaxSpeedIncrease() + 25.0F;
++    //return m_cached_characteristic->getNitroMaxSpeedIncrease() + 50.0F;
+ }  // getNitroMaxSpeedIncrease
+ 
+ // ----------------------------------------------------------------------------
+@@ -1193,6 +1196,8 @@ float KartProperties::getNitroFadeOutTime() const
+ float KartProperties::getNitroMax() const
+ {
+     return m_cached_characteristic->getNitroMax();
++    // HEHE
++    // return 10.0F;
+ }  // getNitroMax
+ 
+ // ----------------------------------------------------------------------------
