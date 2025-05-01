@@ -256,21 +256,6 @@ void GhostKart::updateSound(float dt)
 
     updateEngineSFX(dt);
 
-    if (m_skid_sound)
-    {
-        if(m_all_replay_events[idx].m_skidding_effect)
-        {
-            if (m_skid_sound->getStatus()!=SFXBase::SFX_PLAYING)
-            {
-                m_skid_sound->play(getSmoothedXYZ());
-            }
-        }
-        else if(m_skid_sound->getStatus()==SFXBase::SFX_PLAYING)
-        {
-            m_skid_sound->stop();
-        }
-    }
-
     if (m_nitro_sound)
     {
         if(m_all_replay_events[idx].m_nitro_usage)
@@ -300,12 +285,13 @@ float GhostKart::getSpeed() const
         dynamic_cast<const GhostController*>(getController());
 
     unsigned int current_index = gc->getCurrentReplayIndex();
-    const float rd             = gc->getReplayDelta();
-
-    assert(gc->getCurrentReplayIndex() < m_all_physic_info.size());
 
     if (current_index >= m_all_physic_info.size() - 1)
         return m_all_physic_info.back().m_speed;
+
+    const float rd             = gc->getReplayDelta();
+
+    assert(gc->getCurrentReplayIndex() < m_all_physic_info.size());
 
     return (1-rd)*m_all_physic_info[current_index    ].m_speed
            +  rd *m_all_physic_info[current_index + 1].m_speed;

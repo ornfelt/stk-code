@@ -29,7 +29,6 @@
 #include "guiengine/widgets/check_box_widget.hpp"
 #include "guiengine/widgets/kart_stats_widget.hpp"
 #include "guiengine/widgets/model_view_widget.hpp"
-#include "guiengine/widgets/player_name_spinner.hpp"
 #include "input/input_device.hpp"
 #include "input/input_manager.hpp"
 #include "input/device_manager.hpp"
@@ -366,12 +365,6 @@ void KartSelectionScreen::beforeAddingWidget()
         kart_class->addLabel(_(class_str.c_str()));
     }
     kart_class->addLabel(_("All"));
-
-    DynamicRibbonWidget* w = getWidget<DynamicRibbonWidget>("karts");
-    assert( w != NULL );
-
-    // Avoid too many items shown at the same time
-    w->setItemCountHint(std::min((int)kart_properties_manager->getNumberOfKarts(), 20));
 }   // beforeAddingWidget
 
 // ----------------------------------------------------------------------------
@@ -593,7 +586,12 @@ bool KartSelectionScreen::joinPlayer(InputDevice* device, PlayerProfile* p)
     {
         // Give each player a different start profile
         const int num_active_players = StateManager::get()->activePlayerCount();
-        profile_to_use = PlayerManager::get()->getPlayer(num_active_players);
+        // This doesn't check for players having manually changed the name already before adding new names
+        // But it avoids the game immediately producing a duplicate if the active account is not the 1st
+        if (PlayerManager::get()->getPlayer(num_active_players) == PlayerManager::getCurrentPlayer())
+            profile_to_use = PlayerManager::get()->getPlayer(0);
+        else
+            profile_to_use = PlayerManager::get()->getPlayer(num_active_players);
 
         removeMultiplayerMessage();
     }
@@ -1246,6 +1244,7 @@ void KartSelectionScreen::onFocusChanged(GUIEngine::Widget* previous,
     {
         return;
     }
+    // Manually skip kart class spinner
     GUIEngine::SpinnerWidget* kart_class = getWidget<GUIEngine::SpinnerWidget>("kart_class");
     DynamicRibbonWidget* w = getWidget<DynamicRibbonWidget>("karts");
 
