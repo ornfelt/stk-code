@@ -33,9 +33,18 @@
 #include "../source/Irrlicht/os.h"
 #include "quaternion.h"
 #define DEPTH_ONLY_FRAG_SHADER "depth_only.frag"
+#define SKINNING_PIPELINE "_skinning"
 
 namespace GE
 {
+// ============================================================================
+static void destroyPipeline(VkPipeline* p)
+{
+    vkDestroyPipeline(static_cast<GEVulkanDriver*>(getDriver())->getDevice(),
+        *p, NULL);
+    delete p;
+}   // destroyPipeline
+
 // ============================================================================
 void ObjectData::init(irr::scene::ISceneNode* node, int material_id,
                       int skinning_offset, int irrlicht_material_id)
@@ -431,6 +440,7 @@ start:
         mapped_addr += extra;
     }
 
+    size_t dynamic_spm_offset = 0;
     for (auto& p : m_dynamic_spm_buffers)
     {
         for (auto& q : p.second)
@@ -450,9 +460,11 @@ start:
                 getShader(m));
             ObjectData* data = (ObjectData*)mapped_addr;
             data->init(node, material_id, -1, 0);
-            m_dyspmb_materials[q.first] = material_id;
+            m_dyspmb_materials[q.first] = std::make_pair(material_id,
+                dynamic_spm_offset);
             written_size += dynamic_spm_size;
             mapped_addr += dynamic_spm_size;
+            dynamic_spm_offset += dynamic_spm_size;
         }
     }
     m_dynamic_spm_padded_size = written_size - skinning_data_padded_size;
@@ -489,7 +501,7 @@ start:
             int material_id = m_texture_descriptor->getTextureID(list,
                 cur_shader);
             if (skinning)
-                cur_shader += "_skinning";
+                cur_shader += SKINNING_PIPELINE;
             if (m_graphics_pipelines.find(cur_shader) ==
                 m_graphics_pipelines.end())
                 continue;
@@ -651,7 +663,7 @@ start:
             std::string sorting_key =
                 std::string(1, settings.m_drawing_priority) + cur_shader;
             m_cmds.push_back({ cmd, cur_shader, sorting_key, mb, material_id,
-                settings.isTransparent(), offset_map[cmd.firstInstance] });
+                offset_map[cmd.firstInstance] });
             if (!skip_instance_key && it == cur_key.end())
                  cur_key.push_back(key);
         }
@@ -669,12 +681,6 @@ start:
         [](const DrawCallData& a, const DrawCallData& b)
         {
             return a.m_sorting_key < b.m_sorting_key;
-        });
-
-    std::stable_partition(m_cmds.begin(), m_cmds.end(),
-        [](const DrawCallData& a)
-        {
-            return !a.m_transparent;
         });
 
     size_t object_data_padded_size = written_size - skinning_data_padded_size;
@@ -867,6 +873,7 @@ void GEVulkanDrawCall::createAllPipelines(GEVulkanDriver* vk)
     settings.m_backface_culling = true;
     settings.m_depth_op = VK_COMPARE_OP_LESS;
     settings.m_vertex_description = getDefaultVertexDescription();
+    settings.m_pipeline_type = GVPT_SOLID;
 
     settings.m_vertex_shader = "spm.vert";
     settings.m_skinning_vertex_shader = "spm_skinning.vert";
@@ -907,18 +914,40 @@ void GEVulkanDrawCall::createAllPipelines(GEVulkanDriver* vk)
     settings.m_skinning_vertex_shader = "spm_skinning.vert";
     settings.m_depth_only_fragment_shader = "";
     settings.m_push_constants_func = nullptr;
+    settings.m_pipeline_type = GVPT_GHOST_DEPTH;
 
     settings.m_depth_write = true;
     settings.m_backface_culling = true;
     settings.m_alphablend = true;
     settings.m_drawing_priority = (char)9;
-    settings.m_fragment_shader = "ghost.frag";
+    settings.m_fragment_shader = DEPTH_ONLY_FRAG_SHADER;
     settings.m_shader_name = "ghost";
+    if (doDepthOnlyRenderingFirst())
+    {
+        m_graphics_pipelines["ghost"] = {};
+        m_graphics_pipelines["ghost"].m_settings = settings;
+        m_graphics_pipelines["ghost"].m_pipelines[GVPT_GHOST_DEPTH] =
+            dp_cache.at(settings.m_vertex_shader + settings.m_fragment_shader);
+        m_graphics_pipelines["ghost" SKINNING_PIPELINE] = {};
+        m_graphics_pipelines["ghost" SKINNING_PIPELINE].m_settings = settings;
+        m_graphics_pipelines["ghost" SKINNING_PIPELINE]
+            .m_pipelines[GVPT_GHOST_DEPTH] = dp_cache.at(
+            settings.m_skinning_vertex_shader + settings.m_fragment_shader);
+    }
+    else
+    {
+        createPipeline(vk, settings, dp_cache);
+    }
+
+    settings.m_pipeline_type = GVPT_TRANSPARENT;
+    settings.m_fragment_shader = "ghost.frag";
+    settings.m_depth_write = false;
+    settings.m_depth_op = VK_COMPARE_OP_EQUAL;
     createPipeline(vk, settings, dp_cache);
 
-    settings.m_depth_write = false;
     settings.m_backface_culling = false;
     settings.m_drawing_priority = (char)10;
+    settings.m_depth_op = VK_COMPARE_OP_LESS;
 
     settings.m_fragment_shader = "transparent.frag";
     settings.m_shader_name = "alphablend";
@@ -931,6 +960,7 @@ void GEVulkanDrawCall::createAllPipelines(GEVulkanDriver* vk)
     settings.m_drawing_priority = (char)11;
     createPipeline(vk, settings, dp_cache);
 
+    settings.m_pipeline_type = GVPT_SKYBOX;
     settings.m_alphablend = false;
     settings.m_additive = false;
     settings.m_custom_pl = m_skybox_layout;
@@ -1145,13 +1175,13 @@ void GEVulkanDrawCall::createPipeline(GEVulkanDriver* vk,
             return false;
         std::string key = s.m_shader_name;
         if (skinning)
-            key += "_skinning";
+            key += SKINNING_PIPELINE;
         if (m_graphics_pipelines.find(key) == m_graphics_pipelines.end())
         {
             m_graphics_pipelines[key] = {};
             m_graphics_pipelines[key].m_settings = s;
         }
-        m_graphics_pipelines[key].m_depth_only_pipeline = it->second;
+        m_graphics_pipelines[key].m_pipelines[GVPT_DEPTH] = it->second;
         return true;
     };
 
@@ -1162,28 +1192,27 @@ void GEVulkanDrawCall::createPipeline(GEVulkanDriver* vk,
     {
         std::string key = s.m_shader_name;
         if (skinning)
-            key += "_skinning";
+            key += SKINNING_PIPELINE;
         if (m_graphics_pipelines.find(key) == m_graphics_pipelines.end())
         {
             m_graphics_pipelines[key] = {};
             m_graphics_pipelines[key].m_settings = s;
         }
-        auto dp = [vk](VkPipeline* p)
-        {
-            vkDestroyPipeline(vk->getDevice(), *p, NULL);
-            delete p;
-        };
         if (depth_only)
         {
-            auto sp = std::shared_ptr<VkPipeline>(new VkPipeline(p), dp);
-            m_graphics_pipelines[key].m_depth_only_pipeline = sp;
+            auto sp = std::shared_ptr<VkPipeline>(new VkPipeline(p),
+                destroyPipeline);
+            m_graphics_pipelines[key].m_pipelines[GVPT_DEPTH] = sp;
             std::string vs = skinning ?
                 s.m_skinning_vertex_shader : s.m_vertex_shader;
             dp_cache[vs + s.m_depth_only_fragment_shader] = sp;
         }
         else
-            m_graphics_pipelines[key].m_pipeline =
-                std::shared_ptr<VkPipeline>(new VkPipeline(p), dp);
+        {
+            m_graphics_pipelines[key].m_pipelines[s.m_pipeline_type] =
+                std::shared_ptr<VkPipeline>(new VkPipeline(p),
+                destroyPipeline);
+        }
     };
 
     VkPipeline graphics_pipeline;
@@ -1458,7 +1487,7 @@ void GEVulkanDrawCall::uploadDynamicData(GEVulkanDriver* vk,
                                          GEVulkanCameraSceneNode* cam,
                                          VkCommandBuffer custom_cmd)
 {
-    if (!m_dynamic_data || m_cmds.empty())
+    if (!m_dynamic_data)
         return;
 
     VkCommandBuffer cmd =
@@ -1540,23 +1569,18 @@ void GEVulkanDrawCall::bindBaseVertex(GEVulkanDriver* vk, VkCommandBuffer cmd)
 }   // bindBaseVertex
 
 // ----------------------------------------------------------------------------
-void GEVulkanDrawCall::render(GEVulkanDriver* vk, GEVulkanCameraSceneNode* cam,
-                              VkCommandBuffer custom_cmd)
+void GEVulkanDrawCall::prepareRendering(GEVulkanDriver* vk)
 {
-    if (m_data_layout == VK_NULL_HANDLE || m_cmds.empty())
-        return;
-
-    VkCommandBuffer cmd =
-        custom_cmd ? custom_cmd : vk->getCurrentCommandBuffer();
-    int current_buffer_idx = vk->getCurrentBufferIdx();
-
-    const bool use_base_vertex = GEVulkanFeatures::supportsBaseVertexRendering();
-    const bool bind_mesh_textures = GEVulkanFeatures::supportsBindMeshTexturesAtOnce();
-
     updatePushConstants();
     updateDataDescriptorSets(vk);
     m_texture_descriptor->updateDescriptor();
+}   // prepareRendering
 
+// ----------------------------------------------------------------------------
+void GEVulkanDrawCall::prepareViewport(GEVulkanDriver* vk,
+                                       GEVulkanCameraSceneNode* cam,
+                                       VkCommandBuffer cmd)
+{
     VkViewport vp;
     float scale = getGEConfig()->m_render_scale;
     if (vk->getSeparateRTTTexture())
@@ -1576,30 +1600,46 @@ void GEVulkanDrawCall::render(GEVulkanDriver* vk, GEVulkanCameraSceneNode* cam,
     scissor.extent.width = vp.width;
     scissor.extent.height = vp.height;
     vkCmdSetScissor(cmd, 0, 1, &scissor);
+}   // prepareViewport
 
-    bool depth_only = doDepthOnlyRenderingFirst();
-    bool bound_mesh_textures_once = false;
-    VkPipeline prev_dp = VK_NULL_HANDLE;
-start:
-    std::string cur_pipeline = m_cmds[0].m_shader;
+// ----------------------------------------------------------------------------
+std::vector<uint32_t> GEVulkanDrawCall::getDefaultDynamicOffsets() const
+{
+    if (GEVulkanFeatures::supportsBindMeshTexturesAtOnce())
+        return std::vector<uint32_t>(5, 0);
+    else
+        return std::vector<uint32_t>(4, 0);
+}   // getDefaultDynamicOffsets
+
+// ----------------------------------------------------------------------------
+void GEVulkanDrawCall::bindAllMaterials(VkCommandBuffer cmd)
+{
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_pipeline_layout, 0, 1,
+        m_texture_descriptor->getDescriptorSet(), 0, NULL);
+}   // bindAllMaterials
+
+// ----------------------------------------------------------------------------
+void GEVulkanDrawCall::renderPipeline(GEVulkanDriver* vk, VkCommandBuffer cmd,
+                                      GEVulkanPipelineType pt,
+                                      bool& rebind_base_vertex)
+{
+    if (m_data_layout == VK_NULL_HANDLE || m_cmds.empty())
+        return;
+
+    int current_buffer_idx = vk->getCurrentBufferIdx();
+
+    const bool use_base_vertex = GEVulkanFeatures::supportsBaseVertexRendering();
+    const bool bind_mesh_textures = GEVulkanFeatures::supportsBindMeshTexturesAtOnce();
+
+    VkPipeline prev_pipeline = VK_NULL_HANDLE;
+    std::string cur_pipeline;
     auto dynamic_spm_buffers = m_dynamic_spm_buffers;
-    bool drawn_skybox = false;
     bool bound = false;
-    size_t sbo_alignment = m_limits.minStorageBufferOffsetAlignment;
-    const size_t dynamic_spm_size = sizeof(ObjectData) + getPadding(
-        sizeof(ObjectData), sbo_alignment);
-    size_t dynamic_spm_offset = 0;
 
     int cur_mid = -1;
-    std::vector<uint32_t> dynamic_offsets =
-    {
-        0u,
-        0u,
-        0u,
-        0u,
-        0u,
-    };
-    if (getGEConfig()->m_pbr)
+    std::vector<uint32_t> dynamic_offsets = getDefaultDynamicOffsets();
+    if (getGEConfig()->m_pbr && pt == GVPT_SOLID)
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
             m_pipeline_layout, 2, 1,
@@ -1607,13 +1647,7 @@ start:
     }
     if (bind_mesh_textures)
     {
-        if (!bound_mesh_textures_once)
-        {
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                m_pipeline_layout, 0, 1,
-                m_texture_descriptor->getDescriptorSet(), 0, NULL);
-            bound_mesh_textures_once = true;
-        }
+        cur_pipeline = m_cmds[0].m_shader;
         size_t indirect_offset = getLightDataOffset();
         if (m_light_handler)
             indirect_offset += m_light_handler->getSize();
@@ -1623,12 +1657,15 @@ start:
             GEVulkanDynamicBuffer::supportsHostTransfer() ?
             m_dynamic_data->getHostBuffer()[current_buffer_idx] :
             m_dynamic_data->getLocalBuffer()[current_buffer_idx];
-        bool rebind_base_vertex = true;
         for (unsigned i = 0; i < m_cmds.size(); i++)
         {
-            if (m_cmds[i].m_shader != cur_pipeline)
+            bool is_last_cmd = (i == m_cmds.size() - 1);
+            bool pipeline_change =
+                !is_last_cmd && m_cmds[i + 1].m_shader != cur_pipeline;
+            draw_count++;
+            if (pipeline_change || is_last_cmd)
             {
-                bound = bindPipeline(cmd, cur_pipeline, depth_only, &prev_dp);
+                bound = bindPipeline(cmd, cur_pipeline, &prev_pipeline, pt);
                 auto it = dynamic_spm_buffers.find(
                     getDynamicBufferKey(cur_pipeline));
                 if (it != dynamic_spm_buffers.end())
@@ -1637,14 +1674,14 @@ start:
                     {
                         if (bound)
                         {
-                            dynamic_offsets[1] = dynamic_spm_offset;
+                            auto& dy_offsets = m_dyspmb_materials[buf.first];
+                            dynamic_offsets[1] = dy_offsets.second;
                             rebind_base_vertex = true;
                             bindDataDescriptor(cmd, current_buffer_idx,
                                 dynamic_offsets);
                             buf.first->drawDynamicVertexIndexBuffer(cmd,
                                 current_buffer_idx);
                         }
-                        dynamic_spm_offset += dynamic_spm_size;
                     }
                     dynamic_spm_buffers.erase(it);
                 }
@@ -1663,142 +1700,45 @@ start:
                         indirect_offset, draw_count, indirect_size);
                 }
                 indirect_offset += draw_count * indirect_size;
-                draw_count = 1;
-                cur_pipeline = m_cmds[i].m_shader;
-
-                if (m_cmds[i].m_transparent && !drawn_skybox)
+                if (!is_last_cmd)
                 {
-                    drawn_skybox = true;
-                    if (!depth_only)
-                    {
-                        drawSkyBox(cmd, current_buffer_idx, dynamic_offsets);
-
-                        bindDataDescriptor(cmd, current_buffer_idx,
-                            dynamic_offsets);
-                        vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout,
-                            0, 1, m_texture_descriptor->getDescriptorSet(), 0,
-                            NULL);
-                    }
+                    draw_count = 0;
+                    cur_pipeline = m_cmds[i + 1].m_shader;
                 }
-                continue;
             }
-            draw_count++;
-        }
-        bound = bindPipeline(cmd, m_cmds.back().m_shader, depth_only,
-            &prev_dp);
-        auto it = dynamic_spm_buffers.find(
-            getDynamicBufferKey(m_cmds.back().m_shader));
-        if (it != dynamic_spm_buffers.end())
-        {
-            for (auto& buf : it->second)
-            {
-                if (bound)
-                {
-                    dynamic_offsets[1] = dynamic_spm_offset;
-                    rebind_base_vertex = true;
-                    bindDataDescriptor(cmd, current_buffer_idx,
-                        dynamic_offsets);
-                    buf.first->drawDynamicVertexIndexBuffer(cmd,
-                        current_buffer_idx);
-                }
-                dynamic_spm_offset += dynamic_spm_size;
-            }
-            dynamic_spm_buffers.erase(it);
-        }
-        if (rebind_base_vertex)
-            bindBaseVertex(vk, cmd);
-        if (bound)
-        {
-            dynamic_offsets[1] = m_dynamic_spm_padded_size;
-            dynamic_offsets[4] = m_materials_data[m_cmds.back().m_shader].first;
-            bindDataDescriptor(cmd, current_buffer_idx, dynamic_offsets);
-            vkCmdDrawIndexedIndirect(cmd, indirect_buffer, indirect_offset,
-                draw_count, indirect_size);
         }
     }
     else
     {
-        dynamic_offsets.resize(4);
-        bool rebind_base_vertex = true;
-        bound = bindPipeline(cmd, cur_pipeline, depth_only, &prev_dp);
-        auto it = dynamic_spm_buffers.find(
-            getDynamicBufferKey(cur_pipeline));
-        if (it != dynamic_spm_buffers.end())
-        {
-            for (auto& buf : it->second)
-            {
-                int dy_mat = m_dyspmb_materials[buf.first];
-                if (dy_mat != cur_mid)
-                {
-                    cur_mid = dy_mat;
-                    bindSingleMaterial(cmd, cur_pipeline, cur_mid, depth_only);
-                }
-                if (bound)
-                {
-                    dynamic_offsets[1] = dynamic_spm_offset;
-                    rebind_base_vertex = true;
-                    bindDataDescriptor(cmd, current_buffer_idx,
-                        dynamic_offsets);
-                    buf.first->drawDynamicVertexIndexBuffer(cmd,
-                        current_buffer_idx);
-                }
-                dynamic_spm_offset += dynamic_spm_size;
-            }
-            dynamic_spm_buffers.erase(it);
-        }
-        if (cur_mid != m_cmds[0].m_material_id)
-        {
-            cur_mid = m_cmds[0].m_material_id;
-            bindSingleMaterial(cmd, cur_pipeline, cur_mid, depth_only);
-        }
         for (unsigned i = 0; i < m_cmds.size(); i++)
         {
             const VkDrawIndexedIndirectCommand& cur_cmd = m_cmds[i].m_cmd;
-            if (m_cmds[i].m_transparent && !drawn_skybox)
-            {
-                drawn_skybox = true;
-                if (!depth_only)
-                {
-                    drawSkyBox(cmd, current_buffer_idx, dynamic_offsets);
-
-                    bindDataDescriptor(cmd, current_buffer_idx,
-                        dynamic_offsets);
-                    vkCmdBindDescriptorSets(cmd,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, 0,
-                        1, &m_texture_descriptor->getDescriptorSet()[cur_mid],
-                        0, NULL);
-                    if (use_base_vertex)
-                        rebind_base_vertex = true;
-                }
-            }
             if (m_cmds[i].m_shader != cur_pipeline)
             {
                 cur_pipeline = m_cmds[i].m_shader;
-                bound = bindPipeline(cmd, cur_pipeline, depth_only, &prev_dp);
+                bound = bindPipeline(cmd, cur_pipeline, &prev_pipeline, pt);
                 auto it = dynamic_spm_buffers.find(
                     getDynamicBufferKey(cur_pipeline));
                 if (it != dynamic_spm_buffers.end())
                 {
                     for (auto& buf : it->second)
                     {
-                        int dy_mat = m_dyspmb_materials[buf.first];
+                        auto& dy_offsets = m_dyspmb_materials[buf.first];
+                        int dy_mat = dy_offsets.first;
                         if (dy_mat != cur_mid)
                         {
                             cur_mid = dy_mat;
-                            bindSingleMaterial(cmd, cur_pipeline, cur_mid,
-                                depth_only);
+                            bindSingleMaterial(cmd, cur_pipeline, cur_mid, pt);
                         }
                         if (bound)
                         {
-                            dynamic_offsets[1] = dynamic_spm_offset;
+                            dynamic_offsets[1] = dy_offsets.second;
                             rebind_base_vertex = true;
                             bindDataDescriptor(cmd, current_buffer_idx,
                                 dynamic_offsets);
                             buf.first->drawDynamicVertexIndexBuffer(cmd,
                                 current_buffer_idx);
                         }
-                        dynamic_spm_offset += dynamic_spm_size;
                     }
                     dynamic_spm_buffers.erase(it);
                 }
@@ -1807,18 +1747,18 @@ start:
             if (cur_mid != mid)
             {
                 cur_mid = mid;
-                bindSingleMaterial(cmd, cur_pipeline, cur_mid, depth_only);
-            }
-            if (use_base_vertex && rebind_base_vertex)
-            {
-                bindBaseVertex(vk, cmd);
-                rebind_base_vertex = false;
-                dynamic_offsets[1] = m_dynamic_spm_padded_size;
-                bindDataDescriptor(cmd, current_buffer_idx,
-                    dynamic_offsets);
+                bindSingleMaterial(cmd, cur_pipeline, cur_mid, pt);
             }
             if (bound)
             {
+                if (use_base_vertex && rebind_base_vertex)
+                {
+                    bindBaseVertex(vk, cmd);
+                    rebind_base_vertex = false;
+                    dynamic_offsets[1] = m_dynamic_spm_padded_size;
+                    bindDataDescriptor(cmd, current_buffer_idx,
+                        dynamic_offsets);
+                }
                 if (!use_base_vertex)
                 {
                     dynamic_offsets[1] = m_dynamic_spm_padded_size +
@@ -1834,50 +1774,34 @@ start:
             }
         }
     }
-    if (!drawn_skybox && !depth_only)
-        drawSkyBox(cmd, current_buffer_idx, dynamic_offsets);
     for (auto& p : dynamic_spm_buffers)
     {
         std::string dy_pipeline = getShaderFromKey(p.first);
-        bound = bindPipeline(cmd, dy_pipeline, depth_only, &prev_dp);
+        bound = bindPipeline(cmd, dy_pipeline, &prev_pipeline, pt);
         for (auto& buf : p.second)
         {
-            if (bind_mesh_textures)
+            auto& dy_offsets = m_dyspmb_materials[buf.first];
+            if (!bind_mesh_textures)
             {
-                if (!drawn_skybox && !depth_only)
-                {
-                    vkCmdBindDescriptorSets(cmd,
-                        VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout, 0,
-                        1, m_texture_descriptor->getDescriptorSet(), 0, NULL);
-                }
-            }
-            else
-            {
-                int dy_mat = m_dyspmb_materials[buf.first];
+                int dy_mat = dy_offsets.first;
                 if (dy_mat != cur_mid)
                 {
                     cur_mid = dy_mat;
-                    bindSingleMaterial(cmd, dy_pipeline, cur_mid, depth_only);
+                    bindSingleMaterial(cmd, dy_pipeline, cur_mid, pt);
                 }
             }
             if (bound)
             {
-                dynamic_offsets[1] = dynamic_spm_offset;
+                dynamic_offsets[1] = dy_offsets.second;
+                rebind_base_vertex = true;
                 bindDataDescriptor(cmd, current_buffer_idx,
                     dynamic_offsets);
                 buf.first->drawDynamicVertexIndexBuffer(cmd,
                     current_buffer_idx);
             }
-            dynamic_spm_offset += dynamic_spm_size;
         }
     }
-
-    if (depth_only)
-    {
-        depth_only = false;
-        goto start;
-    }
-}   // render
+}   // renderPipeline
 
 // ----------------------------------------------------------------------------
 size_t GEVulkanDrawCall::getInitialSBOSize() const
@@ -2031,32 +1955,38 @@ void GEVulkanDrawCall::addSkyBox(scene::ISceneNode* node)
 }   // addSkyBox
 
 // ----------------------------------------------------------------------------
-void GEVulkanDrawCall::drawSkyBox(VkCommandBuffer cmd, int current_buffer_idx,
-                                  std::vector<uint32_t>& dynamic_offsets)
+bool GEVulkanDrawCall::renderSkyBox(GEVulkanDriver* vk, VkCommandBuffer cmd)
 {
     if (!m_skybox_renderer || !m_skybox_renderer->getDescriptorSet())
-        return;
+        return false;
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        *m_graphics_pipelines["skybox"].m_pipeline.get());
+        *m_graphics_pipelines["skybox"].m_pipelines[GVPT_SKYBOX].get());
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_skybox_layout, 0, 1, m_skybox_renderer->getDescriptorSet(), 0, NULL);
+    int current_buffer_idx = vk->getCurrentBufferIdx();
+    std::vector<uint32_t> dynamic_offsets = getDefaultDynamicOffsets();
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_skybox_layout,
         1, 1, &m_data_descriptor_sets[current_buffer_idx],
         dynamic_offsets.size(), dynamic_offsets.data());
     vkCmdDraw(cmd, 3, 1, 0, 0);
-}   // drawSkyBox
+    return true;
+}   // renderSkyBox
 
 // ----------------------------------------------------------------------------
 void GEVulkanDrawCall::bindSingleMaterial(VkCommandBuffer cmd,
                                           const std::string& cur_pipeline,
-                                          int material_id, bool depth_only)
+                                          int material_id,
+                                          GEVulkanPipelineType pt)
 {
+    
     const PipelineData& data = m_graphics_pipelines.at(cur_pipeline);
-    const PipelineSettings s = data.m_settings;
-    if (depth_only &&
+    if (data.m_pipelines.find(pt) == data.m_pipelines.end())
+        return;
+    const PipelineSettings& s = data.m_settings;
+    if (pt == GVPT_GHOST_DEPTH || (pt == GVPT_DEPTH &&
         (s.m_depth_only_fragment_shader == DEPTH_ONLY_FRAG_SHADER ||
-        s.m_depth_only_fragment_shader.empty()))
+        s.m_depth_only_fragment_shader.empty())))
         return;
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_pipeline_layout, 0, 1,
