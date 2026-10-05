@@ -383,6 +383,7 @@ LOCAL_CFLAGS       := -I../lib/angelscript/include      \
                       -DENABLE_CRYPTO_MBEDTLS \
                       -DNDEBUG         \
                       -DDISABLE_ICONV  \
+                      -DUSE_CUSTOM_CHANGES \
                       -DANDROID_PACKAGE_NAME=\"$(PACKAGE_NAME)\"    \
                       -DANDROID_APP_DIR_NAME=\"$(APP_DIR_NAME)\"    \
                       -DSUPERTUXKART_VERSION=\"$(PROJECT_VERSION)\" \

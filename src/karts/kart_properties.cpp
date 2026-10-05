@@ -1214,10 +1214,7 @@ float KartProperties::getNitroBigContainer() const
 // ----------------------------------------------------------------------------
 float KartProperties::getNitroMaxSpeedIncrease() const
 {
-    // HEHE
-    //return m_cached_characteristic->getNitroMaxSpeedIncrease();
-    //return m_cached_characteristic->getNitroMaxSpeedIncrease() + 25.0F;
-    return m_cached_characteristic->getNitroMaxSpeedIncrease() + 50.0F;
+    return m_cached_characteristic->getNitroMaxSpeedIncrease();
 }  // getNitroMaxSpeedIncrease
 
 // ----------------------------------------------------------------------------
@@ -1230,8 +1227,9 @@ float KartProperties::getNitroFadeOutTime() const
 float KartProperties::getNitroMax() const
 {
     return m_cached_characteristic->getNitroMax();
-    // HEHE
+#ifdef USE_CUSTOM_CHANGES
     // return 10.0F;
+#endif
 }  // getNitroMax
 
 // ----------------------------------------------------------------------------

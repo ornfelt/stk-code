@@ -30,6 +30,7 @@ CMAKE_DEPENDENT_OPTION(USE_IPV6 "Allow create or connect to game server with IPv
   "NOT USE_SWITCH" OFF)
 option(USE_SYSTEM_WIIUSE "Use system WiiUse instead of the built-in version, when available." OFF)
 option(USE_SQLITE3 "Use sqlite to manage server stats and ban list." ON)
+option(USE_CUSTOM_CHANGES "Enable custom changes (experiments and cheats) diverging from upstream" ON)
 
 if(APPLE)
     CMAKE_DEPENDENT_OPTION(DLOPEN_MOLTENVK "Use dlopen to load MoltenVK for Apple." ON
@@ -190,6 +191,10 @@ if(USE_GLES2)
         add_definitions(-D_IRR_COMPILE_WITH_OGLES2_)
     endif()
     add_definitions(-DNO_IRR_COMPILE_WITH_OPENGL_)
+endif()
+
+if(USE_CUSTOM_CHANGES)
+    add_definitions(-DUSE_CUSTOM_CHANGES)
 endif()
 
 if(SERVER_ONLY)

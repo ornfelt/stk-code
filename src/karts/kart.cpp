@@ -377,9 +377,13 @@ void Kart::reset()
     m_invulnerable_ticks   = 0;
     m_min_nitro_ticks      = 0;
     m_energy_to_min_ratio  = 0;
-    // HEHE
+#ifdef USE_CUSTOM_CHANGES
     //m_collected_energy     = 0;
-    m_collected_energy     = 1000.0F;
+    m_collected_energy     = (m_controller &&
+        m_controller->isLocalPlayerController()) ? 1000.0F : 0;
+#else
+    m_collected_energy     = 0;
+#endif
     m_bounce_back_ticks    = 0;
     m_brake_ticks          = 0;
     m_ticks_last_crash     = 0;
@@ -1183,10 +1187,15 @@ void Kart::collectedItem(ItemState *item_state)
     default        : break;
     }   // switch TYPE
 
+#ifdef USE_CUSTOM_CHANGES
     if (m_collected_energy > m_kart_properties->getNitroMax())
-        // HEHE
         //m_collected_energy = m_kart_properties->getNitroMax();
-        m_collected_energy = 1000.0F;
+        m_collected_energy = m_controller->isLocalPlayerController()
+            ? 1000.0F : m_kart_properties->getNitroMax();
+#else
+    if ( m_collected_energy > m_kart_properties->getNitroMax())
+        m_collected_energy = m_kart_properties->getNitroMax();
+#endif
     m_controller->collectedItem(*item_state, old_energy);
 
 }   // collectedItem
@@ -2281,8 +2290,13 @@ void Kart::updateNitro(int ticks)
     }
 
 
-    // HEHE
+#ifdef USE_CUSTOM_CHANGES
     // m_collected_energy -= m_consumption_per_tick*ticks;
+    if (!m_controller->isLocalPlayerController())
+        m_collected_energy -= m_consumption_per_tick*ticks;
+#else
+    m_collected_energy -= m_consumption_per_tick*ticks;
+#endif
     if (m_collected_energy < 0)
     {
         if(m_nitro_sound->getStatus() == SFXBase::SFX_PLAYING && !rewinding)
@@ -2297,7 +2311,14 @@ void Kart::updateNitro(int ticks)
             m_nitro_sound->play();
 
         m_max_speed->increaseMaxSpeed(MaxSpeed::MS_INCREASE_NITRO,
+#ifdef USE_CUSTOM_CHANGES
+            // Moved from KartProperties::getNitroMaxSpeedIncrease()
+            //m_kart_properties->getNitroMaxSpeedIncrease() + 25.0F,
+            m_kart_properties->getNitroMaxSpeedIncrease() +
+                (m_controller->isLocalPlayerController() ? 50.0F : 0.0F),
+#else
             m_kart_properties->getNitroMaxSpeedIncrease(),
+#endif
             m_kart_properties->getNitroEngineForce(),
             stk_config->time2Ticks(m_kart_properties->getNitroDuration()*m_energy_to_min_ratio),
             stk_config->time2Ticks(m_kart_properties->getNitroFadeOutTime()));
