@@ -667,7 +667,7 @@ begin:
     UserConfigParams::m_real_width = (unsigned)((float)UserConfigParams::m_width / m_device->getNativeScaleX());
     UserConfigParams::m_real_height = (unsigned)((float)UserConfigParams::m_height / m_device->getNativeScaleY());
 
-#ifndef SERVER_ONLY 
+#ifndef SERVER_ONLY
 
     GE::setVideoDriver(m_device->getVideoDriver());
 
@@ -806,7 +806,7 @@ begin:
         [](unsigned int t, ptrdiff_t s, const void* d, unsigned int u)
         { glBufferData(t, s, d, u); },
         [](int n, const unsigned int* b) { glDeleteBuffers(n, b); },
-        [](unsigned int t, ptrdiff_t o, ptrdiff_t l, unsigned int a) 
+        [](unsigned int t, ptrdiff_t o, ptrdiff_t l, unsigned int a)
         { return glMapBufferRange(t, o, l, a); },
         [](unsigned int t) { return glUnmapBuffer(t); });
 #endif
@@ -1215,6 +1215,7 @@ void IrrDriver::commonInit()
     kart_properties_manager->loadAllKarts();
     kart_properties_manager->onDemandLoadKartTextures(
         { UserConfigParams::m_default_kart }, false/*unload_unused*/);
+    kart_properties_manager->setHatMeshName();
 }   // commonInit
 
 // --------------------------------------------------------------------------------------------
@@ -1796,7 +1797,7 @@ void IrrDriver::grabAllTextures(const scene::IMesh *mesh)
 #ifndef SERVER_ONLY
     if (CVS->isGLSL())
     {
-        // SPM files has shared_ptr auto-delete texture 
+        // SPM files has shared_ptr auto-delete texture
         return;
     }
 #endif
@@ -1825,7 +1826,7 @@ void IrrDriver::dropAllTextures(const scene::IMesh *mesh)
 #ifndef SERVER_ONLY
     if (CVS->isGLSL())
     {
-        // SPM files has shared_ptr auto-delete texture 
+        // SPM files has shared_ptr auto-delete texture
         return;
     }
 #endif
@@ -1881,7 +1882,7 @@ void IrrDriver::setAmbientLight(const video::SColorf &light, bool force_SH_compu
         color.b = powf(color.b, 1.0f / 2.2f);
     }
     m_scene_manager->setAmbientLight(color);
-    m_renderer->setAmbientLight(light, force_SH_computation);    
+    m_renderer->setAmbientLight(light, force_SH_computation);
 #endif
 }   // setAmbientLight
 
@@ -2072,7 +2073,7 @@ void IrrDriver::doScreenShot()
     time ( &rawtime );
     tm* timeInfo = localtime( &rawtime );
     char time_buffer[256];
-    sprintf(time_buffer, "%i.%02i.%02i_%02i.%02i.%02i",
+    snprintf(time_buffer, 256, "%i.%02i.%02i_%02i.%02i.%02i",
             timeInfo->tm_year + 1900, timeInfo->tm_mon+1,
             timeInfo->tm_mday, timeInfo->tm_hour,
             timeInfo->tm_min, timeInfo->tm_sec);
@@ -2083,29 +2084,10 @@ void IrrDriver::doScreenShot()
                      + time_buffer+".png";
 
     if (irr_driver->getVideoDriver()->writeImageToFile(image, path.c_str(), 0))
-    {
-        RaceGUIBase* base = World::getWorld()
-                          ? World::getWorld()->getRaceGUI()
-                          : NULL;
-        if (base)
-        {
-            base->addMessage(
-                      core::stringw(("Screenshot saved to\n" + path).c_str()),
-                      NULL, 2.0f, video::SColor(255,255,255,255), true, false);
-        }   // if base
-    }
-    else
-    {
-        RaceGUIBase* base = World::getWorld()->getRaceGUI();
-        if (base)
-        {
-            base->addMessage(
-                core::stringw(("FAILED saving screenshot to\n" + path +
-                              "\n:(").c_str()),
-                NULL, 2.0f, video::SColor(255,255,255,255),
-                true, false);
-        }   // if base
-    }   // if failed writing screenshot file
+        MessageQueue::add(MessageQueue::MT_GENERIC, _("Screenshot saved to %s", path.c_str()));
+    else // if failed writing the screenshot file
+        MessageQueue::add(MessageQueue::MT_GENERIC, _("Failed to save the screenshot to %s", path.c_str()));
+
     image->drop();
 }   // doScreenShot
 
@@ -2298,7 +2280,7 @@ void IrrDriver::renderNetworkDebug()
     s = r / 1000;
     f = r % 1000;
     char str[128];
-    sprintf(str, "%d day(s), %02d:%02d:%02d.%03d",
+    snprintf(str, 128, "%d day(s), %02d:%02d:%02d.%03d",
         (int)d, (int)h, (int)m, (int)s, (int)f);
 
     gui::IGUIFont* font = GUIEngine::getFont();
@@ -2348,7 +2330,7 @@ void IrrDriver::setRecording(bool val)
         time(&rawtime);
         tm* timeInfo = localtime(&rawtime);
         char time_buffer[256];
-        sprintf(time_buffer, "%i.%02i.%02i_%02i.%02i.%02i",
+        snprintf(time_buffer, 256, "%i.%02i.%02i_%02i.%02i.%02i",
             timeInfo->tm_year + 1900, timeInfo->tm_mon + 1,
             timeInfo->tm_mday, timeInfo->tm_hour,
             timeInfo->tm_min, timeInfo->tm_sec);

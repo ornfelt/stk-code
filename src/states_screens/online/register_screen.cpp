@@ -203,7 +203,7 @@ void RegisterScreen::onDialogClose()
 }   // onDialogClose
 
 // -----------------------------------------------------------------------------
-void RegisterScreen::onFocusChanged(GUIEngine::Widget* previous, 
+void RegisterScreen::onFocusChanged(GUIEngine::Widget* previous,
                                     GUIEngine::Widget* focus,  int playerID)
 {
     TextBoxWidget *online_name = getWidget<TextBoxWidget>("username");
@@ -305,9 +305,17 @@ void RegisterScreen::doRegister()
     if (local_name.empty())
     {
         m_info_widget->setErrorColor();
-        m_info_widget->setText(_("User name cannot be empty."), false);
+        m_info_widget->setText(_("Your username cannot be empty!"), false);
         return;
     }
+    // Avoid excessively long names to prevent various UI overflows (limit adjustable in config.xml)
+    else if (local_name.size() > (unsigned int)UserConfigParams::m_local_username_length)
+    {
+    	m_info_widget->setErrorColor();
+        m_info_widget->setText(_("Your username cannot exceed %i characters (current: %i).",
+            UserConfigParams::m_local_username_length, (int)local_name.size()), false);
+        return;
+     }
 
     handleLocalName(local_name);
 
@@ -339,7 +347,7 @@ void RegisterScreen::doRegister()
     // If there is an email_confirm field, use it and check if the email
     // address is correct. If there is no such field, set the confirm email
     // address to email address (so the test below will be passed).
-    stringw email_confirm = getWidget<TextBoxWidget>("email_confirm") 
+    stringw email_confirm = getWidget<TextBoxWidget>("email_confirm")
                           ? getWidget<TextBoxWidget>("email_confirm")->getText()
                           : getWidget<TextBoxWidget>("email")->getText();
     email_confirm.trim();
@@ -409,7 +417,7 @@ void RegisterScreen::doRegister()
             {
                 core::stringw online_name = getWidget<TextBoxWidget>("username")->getText().trim();
 #ifndef SERVER_ONLY
-                m_parent_screen->setNewAccountData(/*online*/true, 
+                m_parent_screen->setNewAccountData(/*online*/true,
                                                    /*auto_login*/false,
                                                    username, password);
 #endif
