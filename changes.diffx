@@ -1,63 +1,100 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4e5618d8e..1ea8e32c3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -30,6 +30,7 @@ CMAKE_DEPENDENT_OPTION(USE_IPV6 "Allow create or connect to game server with IPv
+   "NOT USE_SWITCH" OFF)
+ option(USE_SYSTEM_WIIUSE "Use system WiiUse instead of the built-in version, when available." OFF)
+ option(USE_SQLITE3 "Use sqlite to manage server stats and ban list." ON)
++option(USE_CUSTOM_CHANGES "Enable custom changes (experiments and cheats) diverging from upstream" ON)
+ 
+ if(APPLE)
+     CMAKE_DEPENDENT_OPTION(DLOPEN_MOLTENVK "Use dlopen to load MoltenVK for Apple." ON
+@@ -192,6 +193,10 @@ if(USE_GLES2)
+     add_definitions(-DNO_IRR_COMPILE_WITH_OPENGL_)
+ endif()
+ 
++if(USE_CUSTOM_CHANGES)
++    add_definitions(-DUSE_CUSTOM_CHANGES)
++endif()
++
+ if(SERVER_ONLY)
+     add_definitions(-DSERVER_ONLY)
+     add_definitions(-DNO_IRR_COMPILE_WITH_X11_ -DNO_IRR_COMPILE_WITH_OPENGL_)
 diff --git a/src/karts/kart.cpp b/src/karts/kart.cpp
-index 66a3afb15..5488a14bf 100644
+index 4408cd0e8..af5baad1e 100644
 --- a/src/karts/kart.cpp
 +++ b/src/karts/kart.cpp
-@@ -373,7 +373,9 @@ void Kart::reset()
+@@ -377,7 +377,13 @@ void Kart::reset()
      m_invulnerable_ticks   = 0;
      m_min_nitro_ticks      = 0;
      m_energy_to_min_ratio  = 0;
--    m_collected_energy     = 0;
-+    // HEHE
++#ifdef USE_CUSTOM_CHANGES
 +    //m_collected_energy     = 0;
-+    m_collected_energy     = 1000.0F;
++    m_collected_energy     = (m_controller &&
++        m_controller->isLocalPlayerController()) ? 1000.0F : 0;
++#else
+     m_collected_energy     = 0;
++#endif
      m_bounce_back_ticks    = 0;
      m_brake_ticks          = 0;
      m_ticks_last_crash     = 0;
-@@ -1169,8 +1171,10 @@ void Kart::collectedItem(ItemState *item_state)
+@@ -1181,8 +1187,15 @@ void Kart::collectedItem(ItemState *item_state)
      default        : break;
      }   // switch TYPE
  
--    if ( m_collected_energy > m_kart_properties->getNitroMax())
--        m_collected_energy = m_kart_properties->getNitroMax();
++#ifdef USE_CUSTOM_CHANGES
 +    if (m_collected_energy > m_kart_properties->getNitroMax())
-+        // HEHE
 +        //m_collected_energy = m_kart_properties->getNitroMax();
-+        m_collected_energy = 1000.0F;
++        m_collected_energy = m_controller->isLocalPlayerController()
++            ? 1000.0F : m_kart_properties->getNitroMax();
++#else
+     if ( m_collected_energy > m_kart_properties->getNitroMax())
+         m_collected_energy = m_kart_properties->getNitroMax();
++#endif
      m_controller->collectedItem(*item_state, old_energy);
  
  }   // collectedItem
-@@ -2260,7 +2264,8 @@ void Kart::updateNitro(int ticks)
+@@ -2277,7 +2290,13 @@ void Kart::updateNitro(int ticks)
      }
  
  
--    m_collected_energy -= m_consumption_per_tick*ticks;
-+    // HEHE
++#ifdef USE_CUSTOM_CHANGES
 +    // m_collected_energy -= m_consumption_per_tick*ticks;
++    if (!m_controller->isLocalPlayerController())
++        m_collected_energy -= m_consumption_per_tick*ticks;
++#else
+     m_collected_energy -= m_consumption_per_tick*ticks;
++#endif
      if (m_collected_energy < 0)
      {
          if(m_nitro_sound->getStatus() == SFXBase::SFX_PLAYING && !rewinding)
+@@ -2292,7 +2311,14 @@ void Kart::updateNitro(int ticks)
+             m_nitro_sound->play();
+ 
+         m_max_speed->increaseMaxSpeed(MaxSpeed::MS_INCREASE_NITRO,
++#ifdef USE_CUSTOM_CHANGES
++            // Moved from KartProperties::getNitroMaxSpeedIncrease()
++            //m_kart_properties->getNitroMaxSpeedIncrease() + 25.0F,
++            m_kart_properties->getNitroMaxSpeedIncrease() +
++                (m_controller->isLocalPlayerController() ? 50.0F : 0.0F),
++#else
+             m_kart_properties->getNitroMaxSpeedIncrease(),
++#endif
+             m_kart_properties->getNitroEngineForce(),
+             stk_config->time2Ticks(m_kart_properties->getNitroDuration()*m_energy_to_min_ratio),
+             stk_config->time2Ticks(m_kart_properties->getNitroFadeOutTime()));
 diff --git a/src/karts/kart_properties.cpp b/src/karts/kart_properties.cpp
-index d7c1a68eb..4dd7aad17 100644
+index 9aa15d627..5f058bd9e 100644
 --- a/src/karts/kart_properties.cpp
 +++ b/src/karts/kart_properties.cpp
-@@ -1180,7 +1180,10 @@ float KartProperties::getNitroBigContainer() const
- // ----------------------------------------------------------------------------
- float KartProperties::getNitroMaxSpeedIncrease() const
- {
--    return m_cached_characteristic->getNitroMaxSpeedIncrease();
-+    // HEHE
-+    //return m_cached_characteristic->getNitroMaxSpeedIncrease();
-+    return m_cached_characteristic->getNitroMaxSpeedIncrease() + 25.0F;
-+    //return m_cached_characteristic->getNitroMaxSpeedIncrease() + 50.0F;
- }  // getNitroMaxSpeedIncrease
- 
- // ----------------------------------------------------------------------------
-@@ -1193,6 +1196,8 @@ float KartProperties::getNitroFadeOutTime() const
+@@ -1227,6 +1227,9 @@ float KartProperties::getNitroFadeOutTime() const
  float KartProperties::getNitroMax() const
  {
      return m_cached_characteristic->getNitroMax();
-+    // HEHE
++#ifdef USE_CUSTOM_CHANGES
 +    // return 10.0F;
++#endif
  }  // getNitroMax
  
  // ----------------------------------------------------------------------------
