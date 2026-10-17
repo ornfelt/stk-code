@@ -140,7 +140,7 @@ void DrawCalls::renderBoundingBoxes()
 }   // renderBoundingBoxes
 
 // ----------------------------------------------------------------------------
-void DrawCalls::parseSceneManager(core::array<scene::ISceneNode*> &List,
+void DrawCalls::parseSceneManager(std::vector<scene::ISceneNode*> &List,
                                   const scene::ICameraSceneNode *cam)
 {
     for (unsigned i = 0; i < List.size(); ++i)
@@ -153,7 +153,7 @@ void DrawCalls::parseSceneManager(core::array<scene::ISceneNode*> &List,
             LODNode *node = static_cast<LODNode *>(List[i]);
             node->updateVisibility();
 
-            core::array<scene::ISceneNode*> child;
+            std::vector<scene::ISceneNode*> child;
             if (node->getLevel() >= 0)
                 child.push_back(node->getAllNodes()[node->getLevel()]);
             for (unsigned int i = 0; i < node->getChildren().size(); i++)
@@ -169,32 +169,39 @@ void DrawCalls::parseSceneManager(core::array<scene::ISceneNode*> &List,
             SP::SPMeshNode* node = static_cast<SP::SPMeshNode*>(List[i]);
             SP::addObject(node);
         }
-        else if (STKParticle *node = dynamic_cast<STKParticle*>(List[i]))
+        else if (List[i]->getType() == ESNT_PARTICLE_SYSTEM)
         {
+            STKParticle *node = dynamic_cast<STKParticle*>(List[i]);
             node->updateAbsolutePosition();
             if (!isCulledPrecise(cam, List[i], irr_driver->getBoundingBoxesViz()))
                 CPUParticleManager::getInstance()->addParticleNode(node);
             continue;
         }
-        else if (scene::IBillboardSceneNode *node =
-            dynamic_cast<scene::IBillboardSceneNode*>(List[i]))
+        else if (List[i]->getType() == ESNT_BILLBOARD)
         {
+            scene::IBillboardSceneNode *node = dynamic_cast<scene::IBillboardSceneNode*>(List[i]);
             node->updateAbsolutePosition();
             if (!isCulledPrecise(cam, List[i]))
                 CPUParticleManager::getInstance()->addBillboardNode(node);
             continue;
         }
-        else if (STKTextBillboard *tb =
-            dynamic_cast<STKTextBillboard*>(List[i]))
+        // Text billboards currently use the "unknown" node type,
+        // but there is no guarantee that only them are using it
+        else if (List[i]->getType() == ESNT_UNKNOWN)
         {
-            tb->updateAbsolutePosition();
-            if (!isCulledPrecise(cam, List[i], irr_driver->getBoundingBoxesViz()))
-                TextBillboardDrawer::addTextBillboard(tb);
-            continue;
+            if (STKTextBillboard *tb =
+            dynamic_cast<STKTextBillboard*>(List[i]))
+            {
+                tb->updateAbsolutePosition();
+                if (!isCulledPrecise(cam, List[i], irr_driver->getBoundingBoxesViz()))
+                    TextBillboardDrawer::addTextBillboard(tb);
+                continue;
+            }
         }
+
         parseSceneManager(List[i]->getChildren(), cam);
     }
-}
+}   // parseSceneManager
 
 // ----------------------------------------------------------------------------
 DrawCalls::DrawCalls()
@@ -218,9 +225,11 @@ void DrawCalls::prepareDrawCalls(scene::ICameraSceneNode *camnode)
     TextBillboardDrawer::reset();
     PROFILER_PUSH_CPU_MARKER("- culling", 0xFF, 0xFF, 0x0);
     SP::prepareDrawCalls();
+    PROFILER_PUSH_CPU_MARKER("-- Scene manager parsing", 0xFF, 0xFF, 0x0);
     parseSceneManager(
         irr_driver->getSceneManager()->getRootSceneNode()->getChildren(),
         camnode);
+    PROFILER_POP_CPU_MARKER();
     SP::handleDynamicDrawCall();
     SP::updateModelMatrix();
     PROFILER_POP_CPU_MARKER();
